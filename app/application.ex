@@ -13,6 +13,9 @@ defmodule TezcatlRelay.Application do
 
   @impl true
   def start(_type, _args) do
+    # not in main.exs: a release's own variables are not passed on (app/release_env.ex)
+    :ok = TezcatlRelay.ReleaseEnv.scrub()
+
     browser_port = String.to_integer(System.get_env("TEZCATL_RELAY_PORT") || "4100")
 
     # Poca's secret (D-poca-secret): without one, run only when told to

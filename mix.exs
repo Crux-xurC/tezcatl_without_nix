@@ -19,7 +19,10 @@ defmodule TezcatlRelay.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       releases: [
-        tezcatl_relay: [include_executables_for: [:unix]]
+        # erlexec only loaded: the relay starts it when it first runs a program
+        # (ensure_all_started), after app/release_env.ex has cleaned the environment
+        # the release gave the VM -- erlexec's port program keeps the one it starts with
+        tezcatl_relay: [include_executables_for: [:unix], applications: [erlexec: :load]]
       ]
     ]
   end
@@ -37,7 +40,7 @@ defmodule TezcatlRelay.MixProject do
       {:cowlib, "== 2.13.0", override: true},
       {:ranch, "== 2.1.0", override: true},
       {:gun, "== 2.1.0"},
-      {:erlexec, "== 2.3.4"},
+      {:erlexec, "== 2.3.4", runtime: false},
       {:telemetry, "== 1.4.2", override: true},
       {:decimal, "== 3.1.1", override: true},
       {:db_connection, "== 2.10.2", override: true},
