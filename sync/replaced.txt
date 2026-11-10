@@ -1,0 +1,7 @@
+# Upstream files this repository does not take: each is replaced by work of
+# its own (named after it). sync/sync.sh keeps upstream's version under
+# sync/upstream/<path> and, when it changes, shows the difference -- carry it
+# into the replacement by hand. One path a line; text after the path is a note.
+main.exs                  app/application.ex (and app/pages.ex for nix/t's pages)
+test/e2e/stack.sh         test/e2e/stack.sh here (no nix develop; the relay from _build, the pages from its VM)
+test/e2e/poca_tezcatl.sh  test/e2e/poca_tezcatl.sh here (the same)
