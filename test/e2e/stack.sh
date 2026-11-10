@@ -14,7 +14,7 @@
 #                          points at the test relay; served by the relay's VM
 #   relay    :RELAY_PORT   this repo's relay (app/application.ex), cwd = $E2E_DIR/relay (own
 #                          xipe.json), FS root = $E2E_DIR/fsroot
-#   xipe     :XIPE_PORT    a *copy* of ../xipe_totec (its state is __DIR__-
+#   xipe     :XIPE_PORT    a *copy* of ../xipe_totec_without_nix's files (its state is __DIR__-
 #                          relative) on a copy of its calc_sample fixture with a
 #                          few evaluated rows -- spawned by the relay (root ".")
 #                          The project is $E2E_DIR/fsroot/xproj: under the FS
@@ -43,7 +43,8 @@ XIPE_PORT="${XIPE_PORT:-4201}"
 FAKE_XIPE_PORT="${FAKE_XIPE_PORT:-4202}"
 CDP_PORT="${CDP_PORT:-9223}"
 VENT_PORT="${VENT_PORT:-4099}"   # nothing listens here: the relay's vent uplink just retries
-XIPE_TOTEC_DIR="${XIPE_TOTEC_DIR:-$tz/../xipe_totec}"
+# xipe_totec_without_nix (its bin/xipe), beside this repository
+XIPE_TOTEC_DIR="${XIPE_TOTEC_DIR:-$tz/../xipe_totec_without_nix}"
 CHROMIUM="${CHROMIUM:-chromium}"
 # editor/emacs beside the repository (../editor/emacs), found from a worktree too
 EDITOR_EMACS_DIR="${EDITOR_EMACS_DIR:-$(cd "$(git -C "$tz" rev-parse --path-format=absolute --git-common-dir)/../.." && pwd)/editor/emacs}"
@@ -111,21 +112,24 @@ up() {
   # relay: this repo's code, its own cwd (xipe.json is read from the cwd)
   ln -s "$tz/lib" "$tz/lsp.json" "$E2E_DIR/relay/"
   cat >"$E2E_DIR/relay/xipe.json" <<EOF
-{ ".":    { "mode": "spawn", "installDir": "$E2E_DIR/xt", "command": ["elixir", "main.exs", "serve"], "port": $XIPE_PORT },
+{ ".":    { "mode": "spawn", "installDir": "$E2E_DIR/xt", "command": ["$XIPE_TOTEC_DIR/bin/xipe", "serve"], "port": $XIPE_PORT },
   "fake": { "mode": "connect", "host": "127.0.0.1", "port": $FAKE_XIPE_PORT } }
 EOF
 
   # xipe_totec: a copy, on a copy of its fixture (+ a 4x4 matrix), with evaluated rows
-  if [ -d "$XIPE_TOTEC_DIR/lib" ]; then
-    cp -r "$XIPE_TOTEC_DIR"/{lib,main.exs,info.json,pipelines.json} "$E2E_DIR/xt/"
+  # the copy holds xipe_totec's own files (the plugins in lib/, info.json,
+  # pipelines.json, its tables/); bin/xipe runs on it through XIPE_TOTEC_HOME
+  if [ -x "$XIPE_TOTEC_DIR/bin/xipe" ]; then
+    cp -r "$XIPE_TOTEC_DIR"/{lib,info.json,pipelines.json} "$E2E_DIR/xt/"
     cp -r "$XIPE_TOTEC_DIR/test/fixtures/calc_sample/." "$E2E_DIR/fsroot/xproj/"
     sed -i 's/^  def wide_list, do: Enum.to_list(1..100)$/&\n  def mat, do: for(i <- 0..3, do: for(j <- 1..4, do: i * 4 + j))/' "$E2E_DIR/fsroot/xproj/calc.exs"
     (
       cd "$E2E_DIR/xt"
-      export XIPE_TOTEC_LSP=off
-      elixir main.exs choice project "$E2E_DIR/fsroot/xproj"
-      elixir main.exs scan
-      elixir main.exs do \
+      export XIPE_TOTEC_LSP=off XIPE_TOTEC_HOME="$E2E_DIR/xt"
+      xipe() { "$XIPE_TOTEC_DIR/bin/xipe" "$@"; }
+      xipe choice project "$E2E_DIR/fsroot/xproj"
+      xipe scan
+      xipe do \
         node/resolve module=Calc name=add arity=2 -- effect/set 'id=$0.id' effect=pure -- row/add 'node=$0.id' args=1,2 \
         -- node/resolve module=Calc name=square arity=1 -- effect/set 'id=$3.id' effect=pure -- row/add 'node=$3.id' 'args=[⟦$2.id⟧]' \
         -- node/resolve module=Calc name=average arity=1 -- effect/set 'id=$6.id' effect=pure -- row/add 'node=$6.id' 'args=[[]]' \
@@ -143,7 +147,7 @@ EOF
   # The database (D-db-backend): the relay's default MariaDB account, or E2E_DB_USER (e.g. an account made for the
   # tests only), but always its database tezcatl_e2e, never tezcatl.
   start relay bash -c "cd '$E2E_DIR/relay' && exec env PATH='$tz/lsp/bin':\"\$PATH\" TEZCATL_PAGES_PORT=$PAGES_PORT TEZCATL_PAGES_DIR='$E2E_DIR/pages' TEZCATL_RELAY_PORT=$RELAY_PORT TEZCATL_VENT_PORT=$VENT_PORT \
-    TEZCATL_FS_ROOT='$E2E_DIR/fsroot' TEZCATL_MIRROR_DIR='$E2E_DIR/mirror' TEZCATL_WORK_DIR='$E2E_DIR/work' TEZCATL_IDS_DIR='$E2E_DIR/ids' TEZCATL_DB_NAME=tezcatl_e2e ${E2E_DB_USER:+TEZCATL_DB_USER='$E2E_DB_USER'} TEZCATL_ALLOWED_ORIGINS=http://127.0.0.1:$PAGES_PORT XIPE_TOTEC_LSP=off \
+    TEZCATL_FS_ROOT='$E2E_DIR/fsroot' TEZCATL_MIRROR_DIR='$E2E_DIR/mirror' TEZCATL_WORK_DIR='$E2E_DIR/work' TEZCATL_IDS_DIR='$E2E_DIR/ids' TEZCATL_DB_NAME=tezcatl_e2e ${E2E_DB_USER:+TEZCATL_DB_USER='$E2E_DB_USER'} TEZCATL_ALLOWED_ORIGINS=http://127.0.0.1:$PAGES_PORT XIPE_TOTEC_LSP=off XIPE_TOTEC_HOME='$E2E_DIR/xt' \
     TEZCATL_AUTH=off POCA_SECRET='${E2E_SECRET:-}' \
     elixir --no-halt -e '{:ok, _} = Application.ensure_all_started(:tezcatl_relay)'"
   start_fake

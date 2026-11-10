@@ -59,7 +59,7 @@ node --test test/*.test.js  # the browser side's
 
 A development version, not checked as widely as tezcatl (Nix management). Checked without Nix (Elixir 1.20 / OTP 29): the relay's
 tests, the browser side's, and 64 of the 70 end-to-end scenarios (`test/e2e/stack.sh up`, then `node test/e2e/<name>.mjs`; the
-stack runs Xipe Totec from `XIPE_TOTEC_DIR`), with typescript-language-server and TypeScript 5. Not yet checked here: the scenarios
+stack runs Xipe Totec from xipe_totec_without_nix beside this repository, or `XIPE_TOTEC_DIR`), with typescript-language-server and TypeScript 5. Not yet checked here: the scenarios
 that need an Emacs with magit (`stack.sh emacs`: `magit_*`, `decode_emacs_magit`), a MariaDB login (`sql_socket`), or the OCaml /
 Haskell / Nix / shell language servers (`lsp_langs`, and those parts of `code_outline` and `lsp_paths`).
 
