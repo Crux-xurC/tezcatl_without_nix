@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# bin/test -- the relay's tests, without Nix.
+#
+# test/relay/ runs as one `mix test`. test/relay_isolated/ holds tests that
+# define a stand-in for one of the relay's own modules (sync/sync.sh moves them
+# there); each runs in a `mix test` of its own, so the stand-in replaces the
+# real module only in that VM. The browser side's tests: node --test test/*.test.js
+set -uo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+status=0
+echo "=== test/relay ==="
+mix test "$@" || status=1
+shopt -s nullglob
+for f in test/relay_isolated/*_test.exs; do
+  echo "=== $f ==="
+  TEZCATL_TEST_PATH=test/relay_isolated mix test "$f" "$@" || status=1
+done
+exit "$status"
