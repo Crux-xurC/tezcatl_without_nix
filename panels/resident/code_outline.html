@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — outline</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  html, body { height: 100%; margin: 0; background: #000; color: #ddd; }
+  body { display: flex; flex-direction: column; font: 12px/1.5 var(--tz-ui-font, monospace); }
+  #head { flex: 0 0 auto; display: flex; gap: 1em; align-items: center; padding: 3px 10px;
+          font: 11px/1.6 var(--tz-ui-font, monospace); background: #0a0710; color: #9a7fc0;
+          border-bottom: 1px solid #241a33; white-space: nowrap; overflow: hidden; }
+  #head b { color: #ff9f1c; font-weight: normal; }
+  #msg { color: #6a5c80; overflow: hidden; text-overflow: ellipsis; }
+  #editor { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+  #editor .cm-editor { height: 100%; }
+  /* the definition holding the cursor of the code_editor shown; a kind word dimmer than the name */
+  .cm-ol-here { background: #2a2210; }
+  .cm-ol-kind { color: #6a5c80; }
+  .cm-ol-line { color: #4d4460; }
+  #foot { flex: 0 0 auto; padding: .2em .7em; color: #6a5c80; border-top: 1px solid #241a33;
+          font: 11px/1.5 var(--tz-ui-font, monospace); }
+</style>
+</head>
+<body>
+<div id="head"><b>outline</b><span id="what"></span><span id="msg"></span></div>
+<div id="editor"></div>
+<div id="foot">move with vim keys, / searches · Enter: to that definition ── the definitions (functions, modules, classes ...) of the code_editor used last in the same skin. The coloured line is where the cursor is</div>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/ticket.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/code/code-locate.js"></script>
+<script src="../../lib/code/code-outline.js"></script>
+<script type="module">
+// The outline panel (the syntax tree shown as its
+// definitions only; a code_editor derivative -- a read-only CodeMirror with vim,
+// so moving, searching (/) and jumping are code_editor's own). Put it in a skin
+// next to code_editor (the frame: skin add <column> code_outline). It shows the
+// code_editor used last in the same skin -- the one whose cursor moved last among
+// this page's sibling panels (alone in a window: any code_editor) -- asking it
+// code.outline.query whenever its cursor or text moves (lib/code/code-editor.js
+// reads the Lezer tree, or asks the language server's documentSymbol). One
+// line per definition, indented by depth; the line of the definition holding
+// that cursor is marked (and this cursor follows it while the panel is not
+// focused). Enter puts that code_editor's cursor at the definition and focuses it.
+import { createCodeEditor } from "../../lib/code/code-editor.js";
+import { keymap, Prec, Vim } from "../../lib/vendor/codemirror/cm.bundle.js";
+
+const T = window.Tezcatl;
+const bus = T.bus;
+const O = T.codeOutline;
+const L = T.codeLocate;
+const whatEl = document.getElementById("what");
+const footEl = document.getElementById("foot");
+const env = L.pageEnv(window);
+
+let items = [];
+let lines = [];   // this text's line n (1-based) -> items[...]
+let target = null;   // {id, name} -- the code_editor shown
+let cursorLine = 0;
+let here = -1;
+
+const ed = createCodeEditor({
+  editable: false,
+  focusable: true,
+  // not "code": a code_editor's cursor reports are what this panel follows, never its own
+  surface: "outline",
+  role: "code_outline",
+  keymap: "vim",
+  head: { msg: document.getElementById("msg") },
+  extraExtensions: [Prec.highest(keymap.of([{ key: "Enter", run: () => { go(); return true; } }]))],
+});
+
+// is `id` (a bus id) a panel of the same skin? (through the skin port, lib/core/panel-frame.js;
+// alone in a window: every one is ours)
+function ours(id) { const s = window.Tezcatl.skinPort.siblings(window); return !s || s.some((x) => x.id === id); }
+
+function textOf(list) {
+  return list.map((it) => "  ".repeat(it.depth) + it.kind + " " + it.name + "  :" + it.line).join("\n");
+}
+function show(list, empty) {
+  items = list;
+  const text = list.length ? textOf(list) : empty;
+  lines = [null].concat(list);   // line 1 = items[0]
+  if (ed.getText() !== text) ed.setDoc(text);
+  // the kind words and the line numbers, dimmer (marks: one id each, every line)
+  const kinds = [], nums = [];
+  if (list.length) {
+    let pos = 0;
+    list.forEach((it) => {
+      const lead = 2 * it.depth;
+      kinds.push({ from: pos + lead, to: pos + lead + it.kind.length });
+      const row = textOf([it]);
+      const n = row.lastIndexOf("  :");
+      nums.push({ from: pos + n + 2, to: pos + row.length });
+      pos += row.length + 1;
+    });
+  }
+  ed.mark({ id: "kinds", class: "cm-ol-kind", ranges: kinds });
+  ed.mark({ id: "nums", class: "cm-ol-line", ranges: nums });
+  markHere();
+}
+function markHere() {
+  here = O.around(items, cursorLine);
+  ed.mark({ id: "here", class: "cm-ol-here", lines: here >= 0 ? [here + 1] : [] });
+  // follow the code_editor's cursor, but never move under the person working in this panel
+  if (here >= 0 && !document.hasFocus()) {
+    const l = ed.view.state.doc.line(Math.min(here + 1, ed.view.state.doc.lines));
+    ed.view.dispatch({ selection: { anchor: l.from } });
+  }
+}
+
+let seq = 0;
+function refresh() {
+  if (!target) return;
+  seq += 1;
+  const req = "ol-" + ed.name + "-" + seq;
+  const mine = seq;
+  const off = bus.on("code.outline", (p) => {
+    if (!p || p.req !== req) return;
+    off();
+    if (mine !== seq) return;
+    whatEl.textContent = (p.path || "(no path)") + (p.via ? "  · " + (p.via === "tree" ? "syntax tree" : "lsp") : "");
+    show(Array.isArray(p.items) ? p.items : [], p.reason ? "(" + p.reason + ")" : "(no definitions)");
+  });
+  bus.post("code.outline.query", { req }, { to: target.id });
+  setTimeout(off, 5000);
+}
+let timer = null;
+function soon(ms) { if (timer) clearTimeout(timer); timer = setTimeout(() => { timer = null; refresh(); }, ms); }
+
+// a code_editor of this skin moved (cursor, text, focus): it is the one shown
+bus.on("cursor", (p, meta) => {
+  if (!p || p.surface !== "code" || !meta || !meta.from || !ours(meta.from.id)) return;
+  const changed = !target || target.id !== meta.from.id;
+  target = { id: meta.from.id, name: p.target || meta.from.name };
+  if (p.cell && typeof p.cell.y === "number") cursorLine = p.cell.y;
+  if (changed) { show([], "(reading)"); soon(0); return; }
+  markHere();
+  soon(400);   // the text may have changed: ask again once it rests
+});
+// a file opened or saved in the one shown
+["code.opened", "code.saved"].forEach((t) => {
+  bus.on(t, (p, meta) => { if (target && meta && meta.from && meta.from.id === target.id) soon(100); });
+});
+
+// at start: a code_editor of this skin, if there is one
+show([], "(focus a code_editor to see the definitions of its file)");
+L.query(env).then((list) => {
+  if (target) return;
+  const c = (list || []).filter((x) => ours(x.id))[0];
+  if (c) { target = { id: c.id, name: c.name }; refresh(); }
+});
+
+// Enter: the definition on this line, in that code_editor
+function go() {
+  const ln = ed.view.state.doc.lineAt(ed.view.state.selection.main.head).number;
+  const it = lines[ln];
+  if (!it || !target) return;
+  L.reveal(env, target.id).then(() => {
+    L.goto(env, target.id, it.line, it.col);
+    footEl.textContent = "to " + it.kind + " " + it.name + " (line " + it.line + ")";
+  });
+}
+
+// vim takes Enter before any keymap (it moves down a line): map it in vim
+// itself, normal mode -- this page has the one editor, so vim's page-wide map is ours
+Vim.defineAction("tzOutlineGo", () => go());
+Vim.mapCommand("<CR>", "action", "tzOutlineGo", {}, { context: "normal" });
+
+window.codeOutline = {
+  items: () => items, target: () => target, here: () => here,
+  cursorLine: () => ed.view.state.doc.lineAt(ed.view.state.selection.main.head).number,
+  view: () => ed.view,
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<title>Tezcatl — basic skin</title>
+<style>
+  
+  :root {
+    --tzp-border: #333; --tzp-bg: #111; --tzp-focus: #8cb4ff;
+    --tzp-head: #9a7fc0; --tzp-headfg: #ff9f1c; --tzp-headbg: #0a0710;
+    --tzp-split: #222; --tzp-splith: #8cb4ff;
+  }
+  html, body { height: 100%; margin: 0; background: #000; color: #ddd;
+               font: 13px/1.5 var(--tz-ui-font, monospace); }
+  #skin { display: flex; flex-direction: column; height: 100%; }
+  #bar { flex: 0 0 auto; display: flex; gap: 1em; align-items: center;
+         padding: .25em .7em; background: #0a0710; color: #9a7fc0;
+         border-bottom: 1px solid #333; }
+  #bar b { color: #ff9f1c; font-weight: normal; }
+  #bar .hint { color: #6a5c80; }
+  #stage { flex: 1 1 auto; min-height: 0; }
+</style>
+</head>
+<body>
+<div id="skin">
+  <div id="bar">
+    <b>Tezcatl</b>
+    <span id="status">…</span>
+    <span class="hint">leave&nbsp;key&nbsp;(config <code>ui.keys.leave</code>, default Esc&nbsp;Esc) → navigator</span>
+  </div>
+  <div id="stage"></div>
+</div>
+<iframe id="cursor" hidden title="cursor aggregator"></iframe>
+<iframe id="killring" hidden title="kill-ring aggregator"></iframe>
+
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/store.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/core/commands.js"></script>
+<script src="../../lib/core/panes.js"></script>
+<script src="../../lib/code/code-locate.js"></script>
+<script>
+(function () {
+  'use strict';
+  var bus = Tezcatl.bus;
+  var statusEl = document.getElementById('status');
+
+  Tezcatl.panelFrame.init({ role: 'skin', name: 'basic' });
+
+  document.getElementById('cursor').src = Tezcatl.config.sibling('panels/invisible/cursor.html');
+  document.getElementById('killring').src = Tezcatl.config.sibling('panels/invisible/killring.html');
+
+  var panes = Tezcatl.panes.mount(
+    document.getElementById('stage'),
+    {
+      dir: 'row',
+      children: [
+        { panel: 'input',  src: 'panels/resident/input.html',  name: 'input-1',  size: 1 },
+        { panel: 'output', src: 'panels/resident/output.html', name: 'output-1', size: 1 },
+      ],
+    },
+    { id: 'basic' },
+  );
+
+  var history = [];
+  var navPaneId = null;
+
+  panes.on('focus', function (id) {
+    if (id && history[history.length - 1] !== id) history.push(id);
+    if (history.length > 20) history.shift();
+    // Cross-window focus.changed (for cursor.html's focusHistory) is posted
+    // generically by lib/core/panel-frame.js on the focused iframe's own native
+    // `focus` event (panes.focus() calls contentWindow.focus(), which
+    // triggers it) -- not here, and not with this pane's panes.js-local id,
+    // which would only mean something inside this one skin instance.
+  });
+  panes.on('layout', announceNavList);
+  panes.on('close', function (id) {
+    if (id === navPaneId) navPaneId = null;
+    announceNavList();
+  });
+
+  var windowsUrl = null;
+  var fsBase = null;
+  Tezcatl.config.load().then(function (cfg) {
+    var c0 = (cfg && cfg.connections && cfg.connections[0]) || {};
+    windowsUrl = deriveWindowsUrl(c0.url);
+    fsBase = deriveHttpBase(c0.url);
+    poll();
+  }).catch(poll);
+
+  function deriveWindowsUrl(u) {
+    if (typeof u !== 'string') return null;
+    try {
+      var x = new URL(u);
+      x.protocol = x.protocol === 'wss:' ? 'https:' : 'http:';
+      x.pathname = '/windows'; x.search = ''; x.hash = '';
+      return x.toString();
+    } catch (_) { return null; }
+  }
+  function deriveHttpBase(u) {
+    if (typeof u !== 'string') return null;
+    try {
+      var x = new URL(u);
+      return (x.protocol === 'wss:' ? 'https:' : 'http:') + '//' + x.host;
+    } catch (_) { return null; }
+  }
+
+  var lastWindows = [];
+  function poll() {
+    if (!windowsUrl) { statusEl.textContent = 'no relay url in config.json'; return; }
+    fetch(windowsUrl, { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (b) {
+        var rows = (b && Array.isArray(b.windows)) ? b.windows : [];
+        lastWindows = rows;
+        statusEl.textContent =
+          rows.length + ' connection' + (rows.length === 1 ? '' : 's') +
+          ' · emacs-vent ' + (b && b.uplink ? 'up' : 'DOWN');
+        announceNavList();
+      })
+      .catch(function () { statusEl.textContent = 'relay unreachable'; })
+      .then(function () { setTimeout(poll, 2000); });
+  }
+
+  function buildNavList() {
+    var local = panes.panes().filter(function (p) { return p.id !== navPaneId; });
+    var localNames = {};
+    local.forEach(function (p) { localNames[p.name] = true; });
+
+    var items = local.map(function (p) {
+      return {
+        kind: 'pane', id: p.id, name: p.name,
+        label: p.role + '  ' + p.name, sub: 'this skin',
+      };
+    });
+    lastWindows.forEach(function (w) {
+      if (!w || !w.name || localNames[w.name]) return;
+      items.push({
+        kind: 'window', id: w.id, name: w.name,
+        label: 'window  ' + w.name, sub: w.id || '',
+      });
+    });
+    return items;
+  }
+  function announceNavList() {
+    bus.post('nav.list', { items: buildNavList() });
+  }
+  bus.on('nav.list.query', announceNavList);
+
+  Tezcatl.commands.load().catch(function () {});
+  Tezcatl.commands.listenBus();
+  // code.list / code.find / code.goto / code.open-at, when invoked here (lib/code/code-locate.js)
+  Tezcatl.codeLocate.register(Tezcatl.commands, Tezcatl.codeLocate.pageEnv(window),
+    { say: function (t) { statusEl.textContent = t; } });
+
+  Tezcatl.commands.register('nav.open', function () {
+    if (navPaneId && panes.has(navPaneId)) { panes.focus(navPaneId); return; }
+    navPaneId = panes.addPane(
+      { panel: 'list', src: 'panels/tool/list.html?config=nav', name: 'nav', size: 1 },
+      { side: 'right' },
+    );
+    announceNavList();
+    setTimeout(function () { if (navPaneId) panes.focus(navPaneId); }, 60);
+  });
+
+  Tezcatl.commands.register('nav.goto', function (args) {
+    args = args || {};
+    if (args.kind === 'window') {
+      try { window.open('', args.name); } catch (_) {}
+    } else if (args.id && panes.has(args.id)) {
+      panes.focus(args.id);
+    }
+    if (navPaneId && panes.has(navPaneId)) {
+      var np = navPaneId; navPaneId = null; panes.closePane(np);
+    }
+    if (args.kind !== 'window' && args.id && panes.has(args.id)) panes.focus(args.id);
+  });
+
+  function cycle(delta) {
+    var ps = panes.panes().filter(function (p) { return p.id !== navPaneId; });
+    if (!ps.length) return;
+    var cur = panes.focusedId();
+    var i = 0;
+    for (var k = 0; k < ps.length; k++) if (ps[k].id === cur) i = k;
+    panes.focus(ps[(i + delta + ps.length) % ps.length].id);
+  }
+  Tezcatl.commands.register('nav.next', function () { cycle(1); });
+  Tezcatl.commands.register('nav.prev', function () { cycle(-1); });
+  Tezcatl.commands.register('nav.back', function () {
+    for (var i = history.length - 2; i >= 0; i--) {
+      if (panes.has(history[i])) { panes.focus(history[i]); return; }
+    }
+  });
+  Tezcatl.commands.register('pane.close', function () {
+    var id = panes.focusedId();
+    if (id) panes.closePane(id);
+  });
+
+  var krPaneId = null;
+  var krOrigin = null;
+
+  function openKillring() {
+    var from = panes.focusedId();
+    var leaf = from && panes.get(from);
+    krOrigin = { id: from, kind: (leaf && leaf.role) || null };
+    if (krPaneId && panes.has(krPaneId)) { panes.focus(krPaneId); }
+    else {
+      krPaneId = panes.addPane(
+        { panel: 'list', src: 'panels/tool/list.html?config=killring', name: 'killring', size: 1 },
+        { side: 'right' },
+      );
+    }
+    bus.post('killring.origin', krOrigin);
+    setTimeout(function () { if (krPaneId) panes.focus(krPaneId); }, 60);
+  }
+  Tezcatl.commands.register('killring.open', openKillring);
+  bus.on('killring', openKillring);
+
+  var codePaneId = null;
+  var lastCodeFrame = null;
+  var pendingOpenPath = null;
+
+  // this skin's own tree pane. A tree in another skin posts code.open on the
+  // same bus for its own skin -- those are not ours (code.open from anything
+  // else -- the bookmarks list, a table's g d -- still is)
+  var TREE_NAME = 'tree-basic-' + Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5);
+
+  Tezcatl.commands.register('tree.open', function () {
+    var t = panes.panes().filter(function (p) { return p.role === 'tree'; })[0];
+    if (t) { panes.focus(t.id); return; }
+    var id = panes.addPane(
+      { panel: 'tree', src: 'panels/resident/tree.html', name: TREE_NAME, size: 1 },
+      { side: 'left' },
+    );
+    setTimeout(function () { panes.focus(id); }, 60);
+  });
+
+  bus.on('code.ready', function (payload, meta) {
+    if (!(meta && meta.from && meta.from.role === 'code')) return;
+    lastCodeFrame = { id: meta.from.id };
+    if (pendingOpenPath) { feedCode(pendingOpenPath, lastCodeFrame.id); pendingOpenPath = null; }
+  });
+
+  bus.on('code.open', function (payload, meta) {
+    var f = meta && meta.from;
+    if (f && f.role === 'tree' && f.name !== TREE_NAME) return;
+    var path = payload && payload.path;
+    if (!path || !fsBase) return;
+    var hasCode = panes.panes().some(function (p) { return p.role === 'code'; });
+    if (hasCode && lastCodeFrame) {
+      feedCode(path, lastCodeFrame.id);
+      focusCode();
+    } else {
+      pendingOpenPath = path;
+      if (!hasCode) {
+        codePaneId = panes.addPane(
+          { panel: 'code', src: 'panels/resident/code_editor.html', name: 'code-1', size: 1 },
+          { side: 'right' },
+        );
+        setTimeout(focusCode, 60);
+      }
+    }
+  });
+
+  function focusCode() {
+    var c = panes.panes().filter(function (p) { return p.role === 'code'; })[0];
+    if (c) panes.focus(c.id);
+  }
+  function feedCode(path, toId) {
+    fetch(fsBase + '/fs/read?path=' + encodeURIComponent(path), { cache: 'no-store' })
+      // not ok: the relay's reason ("not UTF-8 text ..."), else the status
+      .then(function (r) { return r.ok ? r.text() : r.text().then(function (t) { var j = null; try { j = JSON.parse(t); } catch (_) {} throw new Error((j && j.error) || ('HTTP ' + r.status)); }); })
+      .then(function (text) {
+        bus.post('code.set', { text: text, filename: path }, toId ? { to: toId } : undefined);
+        statusEl.textContent = 'opened ' + path;
+      })
+      .catch(function (e) { statusEl.textContent = 'read failed: ' + (e && e.message || e); });
+  }
+
+
+  // compile.run / compile.run-nix (lib/vent/compile-intent.js) ask for a mirror
+  // pane before typing the compile command; if this skin is the one showing
+  // it, reuse a single "xterm_cutoff" pane in place rather than always
+  // popping a new tab -- the compile-intent side falls back to window.open
+  // by itself if nothing answers within its short timeout, so wiring this
+  // is opt-in and never required for the feature to work.
+  var cutoffPaneId = null;
+  var cutoffFrameId = null;
+
+  bus.on('compile.cutoff.open', function (payload) {
+    if (cutoffPaneId && panes.has(cutoffPaneId)) {
+      panes.focus(cutoffPaneId);
+      if (cutoffFrameId) {
+        bus.post('terminal.reconfigure',
+          { source: payload.source, code: payload.code, req: payload.reqId },
+          { to: cutoffFrameId });
+      }
+    } else {
+      cutoffFrameId = null;
+      cutoffPaneId = panes.addPane(
+        { panel: 'xterm_cutoff',
+          src: 'panels/tool/xterm_cutoff.html?source=' + encodeURIComponent(payload.source) +
+               '&code=' + encodeURIComponent(payload.code) +
+               '&req=' + encodeURIComponent(payload.reqId),
+          name: 'cutoff', size: 1 },
+        { side: 'right' },
+      );
+      setTimeout(function () { if (cutoffPaneId) panes.focus(cutoffPaneId); }, 60);
+    }
+    bus.post('compile.cutoff.opened', { reqId: payload.reqId });
+  });
+
+  // Learn the freshly-created cutoff pane's own bus id from its first
+  // terminal.ready (mirrors lastCodeFrame's capture via code.ready) so a
+  // later reuse can address it with terminal.reconfigure.
+  bus.on('terminal.ready', function (payload, meta) {
+    if (cutoffPaneId && !cutoffFrameId) cutoffFrameId = meta && meta.from && meta.from.id;
+  });
+  panes.on('close', function (id) {
+    if (id === cutoffPaneId) { cutoffPaneId = null; cutoffFrameId = null; }
+  });
+
+  bus.on('killring.done', function (payload) {
+    if (krPaneId && panes.has(krPaneId)) {
+      var p = krPaneId; krPaneId = null; panes.closePane(p);
+    }
+    var back = (payload && payload.originId) || (krOrigin && krOrigin.id);
+    if (back && panes.has(back)) panes.focus(back);
+  });
+  panes.on('close', function (id) { if (id === krPaneId) krPaneId = null; });
+
+  bus.on('yield', function () { Tezcatl.commands.invoke('nav.open'); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "pairs": [
+    { "name": "panel", "start": "panel.open", "end": ["panel.close"], "key": "@from", "text": "{role} {name}" },
+    { "name": "command", "start": "command", "end": ["command.taken"], "key": "req", "text": "{name}", "slowMs": 1000, "expireMs": 2000 },
+    { "name": "save", "start": "code.file", "where": { "op": "write" }, "end": ["code.saved", "code.saveFailed"], "fail": ["code.saveFailed"], "key": "req", "text": "save", "slowMs": 5000 },
+    { "name": "check", "start": "code.file", "where": { "op": "check" }, "end": ["code.checked"], "failWhere": { "state": "error" }, "key": "req", "text": "check update", "slowMs": 5000 },
+    { "name": "open", "start": "code.open", "end": ["code.opened", "code.openFailed"], "fail": ["code.openFailed"], "key": "path", "text": "open {path}", "slowMs": 5000, "expireMs": 10000 },
+    { "name": "table", "start": "matrix.load", "end": ["matrix.loaded"], "failWhere": { "ok": false }, "key": "ref", "text": "table {kind}:{ref}", "slowMs": 10000 },
+    { "name": "lsp", "start": "lsp.request", "end": ["lsp.response"], "failWhere": { "ok": false }, "key": "req", "text": "{method} {path}", "slowMs": 3000,
+      "cancel": { "type": "lsp.cancel", "payload": { "req": "{key}" } } },
+    { "name": "xipe", "start": "xipe.sent", "end": ["xipe.answered"], "failWhere": { "ok": false }, "key": "req", "text": "xipe (a line sent, waiting for its answer)", "slowMs": 10000 }
+  ]
+}

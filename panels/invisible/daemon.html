@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<title>Tezcatl — daemon (session services)</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+
+<style>
+  body { margin: 0; font: 11px/1.4 var(--tz-ui-font, monospace); color: #9a7fc0; background: #0a0710; }
+  #s { padding: .4em .6em; }
+  iframe { display: none; width: 0; height: 0; border: 0; }
+</style>
+</head>
+<body>
+<div id="s">daemon: starting…</div>
+
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script>
+(function () {
+  'use strict';
+  var bus = Tezcatl.bus;
+  var sEl = document.getElementById('s');
+  var debug = /(?:^|[?&])debug(?:=|&|$)/.test(location.search);
+
+  Tezcatl.panelFrame.init({ role: 'daemon', name: 'daemon' });
+
+  var myId = 'dae-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+  var active = false;
+  var decided = false;
+  var seen = {};
+  seen[myId] = true;
+
+  bus.on('daemon.hello', function (p) {
+    if (!p || p.id === myId) return;
+    seen[p.id] = true;
+    if (active) bus.post('daemon.here', { id: myId });
+  });
+  bus.on('daemon.here', function (p) {
+    if (!p || p.id === myId || decided) return;
+    decided = true;
+    render('dormant — incumbent ' + p.id);
+  });
+
+  bus.post('daemon.hello', { id: myId });
+  setTimeout(function () {
+    if (decided) return;
+    decided = true;
+    var ids = Object.keys(seen).sort();
+    if (ids[0] === myId) {
+      active = true;
+      addFrame('killring', 'panels/invisible/killring.html');
+      addFrame('cursor', 'panels/invisible/cursor.html');
+      render('active — killring + cursor');
+    } else {
+      render('dormant — ' + ids[0] + ' elected');
+    }
+  }, 250);
+
+  function addFrame(id, rel) {
+    var f = document.createElement('iframe');
+    f.id = id;
+    f.title = id;
+    f.src = Tezcatl.config.sibling(rel);
+    document.body.appendChild(f);
+  }
+
+  function render(msg) {
+    if (debug) sEl.textContent = 'daemon: ' + msg;
+    else document.body.style.display = 'none';
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "database",
+  "axis": "h",
+  "ratio": [1],
+  "columns": [[
+    ["db_bar", 1, 1, false, { "px": 26 }],
+    ["matrix_table", 2, 5, false, { "query": { "kind": "given", "ref": "database" } }],
+    ["code_cmd_in", 3, 2, false, { "query": { "lang": "mariadb", "keep": "1", "clear": "db", "hint": "Mod-Enter: the whole text as one statement · db login [account] / db exit / db cancel" } }]
+  ]],
+  "main": "db_bar",
+  "move": { "table": "matrix_table", "line": "code_cmd_in", "bar": "db_bar" }
+}

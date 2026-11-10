@@ -1,0 +1,8 @@
+{
+  "title": "Agenda",
+  "kind": "task_list",
+  "pollMs": 1000,
+  "labels": { "empty": "(no task list ── L in a task_table cuts one)" },
+  "hint": "t: the next state · d: DONE · x: CANCELLED (d / x: every task under it too) · M-n: a new task from the filter text · Enter: its line in the note · Del: out of the list (its table keeps it)",
+  "keys": { "t": "cycle", "d": "done", "x": "cancel", "M-n": "new" }
+}

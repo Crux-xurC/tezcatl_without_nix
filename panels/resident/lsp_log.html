@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — lsp_log</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  html, body { height: 100%; margin: 0; background: #000; color: #ddd; }
+  body { display: flex; flex-direction: column; font: 12px/1.5 var(--tz-ui-font, monospace); }
+  #head { flex: 0 0 auto; display: flex; gap: 1em; align-items: center; padding: 3px 10px;
+          font: 11px/1.6 var(--tz-ui-font, monospace); background: #0a0710; color: #9a7fc0;
+          border-bottom: 1px solid #241a33; white-space: nowrap; overflow: hidden; }
+  #head b { color: #ff9f1c; font-weight: normal; }
+  #msg { color: #6a5c80; overflow: hidden; text-overflow: ellipsis; }
+  #editor { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+  #editor .cm-editor { height: 100%; }
+  .cm-lsp-head { color: #c9b8e8; }
+  .cm-lsp-now { background: #1b2a10; }
+  #foot { flex: 0 0 auto; padding: .2em .7em; color: #6a5c80; border-top: 1px solid #241a33;
+          font: 11px/1.5 var(--tz-ui-font, monospace); }
+</style>
+</head>
+<body>
+<div id="head"><b>lsp_log</b><span id="what"></span><span id="msg"></span></div>
+<div id="editor"></div>
+<div id="foot">move with vim keys, / searches · Enter: to the place of that line ── the LSP operations of the code_editor in the same skin (definition, references, rename, format, hover). lsp.back (C-o) and lsp.forward (C-i) go by this record</div>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/ticket.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/core/commands.js"></script>
+<script src="../../lib/code/code-locate.js"></script>
+<script src="../../lib/code/lsp-log.js"></script>
+<script type="module" src="../../lib/code/lsp-log-page.js"></script>
+</body>
+</html>

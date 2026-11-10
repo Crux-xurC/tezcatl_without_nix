@@ -1,0 +1,43 @@
+# nix build symlink
+result
+
+# editor / OS noise
+*~
+\#*\#
+.\#*
+.DS_Store
+
+# node
+/node_modules/
+
+# local only, never committed
+/.claude/
+/Old/
+erl_crash.dump
+/todo.json
+/dict.json
+/tree.json
+/fonts/
+/local.env
+/example_mirror/
+# a person's own skins, panels, looks (e.g. an LCARS version) -- never shipped; skin read looks in local/skins/
+/local/
+
+# the cell tables and their views: the author's own, not published
+/lib/view/cells.js
+/lib/view/cell-grid.js
+/lib/view/cell-grid.css
+/lib/view/loupe-page.js
+/lib/view/absorber-cell-page.js
+/panels/extra/loupe.html
+/panels/extra/absorber_cell.html
+/test/cells.test.js
+
+# the Japanese record up to 2026-10-18 and the notes for agent sessions: kept on this machine, not published
+/work_history/
+/CLAUDE.md
+
+# --- tezcatl_without_nix's own (sync/gitignore.extra) ---
+/_build/
+/deps/
+*.ez

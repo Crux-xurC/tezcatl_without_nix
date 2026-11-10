@@ -1,0 +1,8 @@
+{
+  "dialect": "emacs",
+  "about": "The index of intents per Emacs extension. The contents are in extensions/<extension>.json (an intent's id is <extension>.<name>). To add one, make the file and write its name here (a browser cannot list a directory)",
+  "extensions": [
+    "magit",
+    "emacs"
+  ]
+}

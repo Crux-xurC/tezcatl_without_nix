@@ -1,0 +1,5 @@
+{
+  "label": "xterm",
+  "desc": "an xterm panel of the same skin: what it printed, as plain lines (terminal.data, lib/recv/term-text.js), from when the list was opened. One per xterm panel open.",
+  "scripts": ["lib/recv/term-text.js", "lib/recv/xterm.js"]
+}

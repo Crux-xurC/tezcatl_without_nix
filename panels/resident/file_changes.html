@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — file changes</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; background: #000; color: #ddd; display: flex; flex-direction: column;
+         font: 12px/1.5 var(--tz-ui-font, monospace); }
+  #head { flex: 0 0 auto; display: flex; gap: 1em; align-items: center; padding: 3px 10px;
+          font: 11px/1.6 var(--tz-ui-font, monospace); background: #0a0710; color: #9a7fc0;
+          border-bottom: 1px solid #241a33; }
+  #head b { color: #ff9f1c; font-weight: normal; }
+  #list { flex: 1 1 auto; overflow: auto; margin: 0; padding: 0; list-style: none; outline: none; }
+  #list li { padding: .25em .7em; border-bottom: 1px solid #1a1424; white-space: pre-wrap; cursor: default; }
+  #list li .t { color: #6a5c80; margin-right: .6em; }
+  #list li .who { color: #9a7fc0; margin-left: .6em; }
+  #list li.info { color: #7d7590; }
+  #list li.warn { color: #ffcf7a; }
+  #list li.sel { background: #1b1430; }
+  #list:empty::before { content: "(nothing has changed yet)"; display: block; padding: .5em .7em; color: #4d4460; }
+  #foot { flex: 0 0 auto; padding: .2em .7em; color: #6a5c80; border-top: 1px solid #241a33;
+          font: 11px/1.5 var(--tz-ui-font, monospace); }
+</style>
+</head>
+<body>
+<div id="head"><b>file changes</b><span id="count"></span></div>
+<ul id="list" tabindex="0"></ul>
+<div id="foot">↑↓ select · Enter: to that code_editor · Del: dismiss the notice · d d: drop a copy left behind ── when the file of an open code_editor changes, a clean one reads it again and an edited one is listed here</div>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/core/commands.js"></script>
+<script src="../../lib/code/code-locate.js"></script>
+<script src="../../lib/code/file-changes.js"></script>
+<script src="../../lib/code/file-changes-page.js"></script>
+</body>
+</html>

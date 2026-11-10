@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — matrix</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; background: #000; color: #ddd; display: flex;
+         flex-direction: column; font-family: var(--tz-ui-font, monospace); }
+  #head { flex: 0 0 auto; display: flex; gap: 1em; align-items: center;
+          padding: 3px 10px; font: 11px/1.6 var(--tz-ui-font, monospace);
+          background: #0a0710; color: #9a7fc0; border-bottom: 1px solid #241a33; }
+  #head b { color: #ff9f1c; font-weight: normal; }
+  #head .hint { color: #6a5c80; }
+  #head a.csv { color: #8cb4ff; text-decoration: none; cursor: pointer; }
+  #head a.csv:hover { text-decoration: underline; }
+
+  #boot { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; }
+  #boot form { display: flex; flex-direction: column; gap: .6em; color: #ccc; font: 13px/1.5 var(--tz-ui-font, monospace); }
+  #boot label { display: flex; flex-direction: column; gap: .2em; }
+  #boot input { background: #000; color: #ffcc99; border: 1px solid #444; padding: .3em .4em; font: inherit; }
+  #boot button { padding: .3em .8em; background: #241a33; color: #ff9f1c; border: 1px solid #444; cursor: pointer; }
+  #placeholder { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; color: #6a5c80; }
+  /* [hidden]'s UA rule (display:none) loses to the unconditional
+     `display: flex` above unless restated here -- a plain attribute
+     selector is lower specificity than #id, so it needs to be repeated per
+     element rather than relying on the browser default. */
+  #boot[hidden], #placeholder[hidden], #grid-wrap[hidden] { display: none; }
+
+  #grid-wrap { flex: 1 1 auto; min-height: 0; overflow: auto; outline: none; }
+
+  table.mx-grid { border-collapse: collapse; width: 100%; font: 12px/1.5 var(--tz-ui-font, monospace); }
+  table.mx-grid thead th { position: sticky; top: 0; background: #0a0710; color: #ff9f1c;
+    text-align: left; padding: 2px 8px; border-bottom: 1px solid #333; cursor: pointer; z-index: 1; }
+  /* one line per cell, width-capped: a long value (a 4x4 matrix, a stack
+     trace) is cut with "…" instead of stretching the grid; the cursor
+     cell's full text is shown in #detail below */
+  table.mx-grid td { padding: 2px 8px; border-bottom: 1px solid #161122; white-space: nowrap;
+    max-width: 32em; overflow: hidden; text-overflow: ellipsis; }
+  #detail { flex: 0 0 auto; max-height: 30%; overflow: auto; padding: 3px 10px;
+    border-top: 1px solid #241a33; background: #0a0710; color: #ccc;
+    font: 12px/1.5 var(--tz-ui-font, monospace); white-space: pre-wrap; word-break: break-all; }
+  #detail[hidden] { display: none; }
+  #detail .col { color: #ff9f1c; }
+  table.mx-grid td.mx-gutter { color: #6a5c80; text-align: right; user-select: none; background: #0a0710; }
+  table.mx-grid td[data-render="ref"] { color: #8cb4ff; }
+  table.mx-grid td[data-render="state"][data-state="ok"] { color: #9aa855; }
+  table.mx-grid td[data-render="state"]:not([data-state="ok"]) { color: #ff6666; }
+  table.mx-grid td.mx-cursor { outline: 1px solid #ff9f1c; outline-offset: -1px; }
+  table.mx-grid td.mx-selected { background: #1a1428; }
+  table.mx-grid td[data-color="b"] { background: #2b4a7a; color: #eaf1ff; }
+  table.mx-grid td[data-color="r"] { background: #7a2b2b; color: #ffecec; }
+  table.mx-grid td[data-color="y"] { background: #7a6b1f; color: #fffbe0; }
+  table.mx-grid tr.mx-filter-row td { border-bottom: 1px solid #333; }
+  table.mx-grid tr.mx-filter-row input { font: inherit; background: #000; color: #ffcc99;
+    border: 1px solid #444; padding: 1px 4px; }
+
+  /* content-visibility on <tr> is the large-table perf hint the design doc
+     asked for; harmless (and correctly ignored) in browsers without it. */
+  table.mx-grid tbody tr { content-visibility: auto; }
+</style>
+</head>
+<body>
+<div id="head">
+  <b id="title">matrix</b>
+  <span id="ref-label" class="hint"></span>
+  <span id="msg" class="hint"></span>
+  <a class="csv" id="csv-link" hidden>CSV</a>
+</div>
+<div id="boot" hidden>
+  <form id="boot-form">
+    <div class="hint">name the table (normally not shown when opened from list.html)</div>
+    <label>kind <input id="boot-kind" type="text" value="xipe" autocomplete="off"></label>
+    <label>root <input id="boot-root" type="text" value="." autocomplete="off" placeholder="xipe.json project key"></label>
+    <label>ref <input id="boot-ref" type="text" autocomplete="off" placeholder="module=Calc&name=mul&arity=2 or row=<call_id>"></label>
+    <button type="submit">Open</button>
+  </form>
+</div>
+<div id="placeholder" hidden></div>
+<div id="grid-wrap" tabindex="0" hidden></div>
+<div id="detail" hidden></div>
+
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/ticket.js"></script>
+<script src="../../lib/core/store.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/core/keymap.js"></script>
+<script src="../../lib/xipe/matrix-data.js"></script>
+<script src="../../lib/xipe/matrix-render.js"></script>
+<script src="../../lib/xipe/matrix-grid.js"></script>
+<script src="../../lib/xipe/xipe-client.js"></script>
+<script src="../../lib/xipe/xipe-rows.js"></script>
+<script src="../../lib/xipe/xipe-place.js"></script>
+<script src="../../lib/code/code-locate.js"></script>
+<script src="../../lib/core/commands.js"></script>
+<script src="../../lib/xipe/matrix-commands.js"></script>
+<script src="../../lib/xipe/matrix-target.js"></script>
+<script src="../../lib/xipe/matrix-page.js"></script>
+</body>
+</html>

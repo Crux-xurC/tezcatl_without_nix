@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<title>Tezcatl — list</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<style>
+  
+  body { margin: 0; display: flex; flex-direction: column; height: 100vh; }
+  #head { flex: 0 0 auto; padding: .3em .5em; border-bottom: 1px solid #333;
+          background: #0a0710; color: #9a7fc0; font: 12px/1.5 var(--tz-ui-font, monospace); }
+  #head .title { color: #ff9f1c; }
+  #filter { width: 100%; margin-top: .25em; font: inherit; padding: .25em .4em;
+            background: #000; color: #ffcc99; border: 1px solid #444; }
+  #filter:focus { outline: none; border-color: #8cb4ff; }
+  ul { list-style: none; margin: 0; padding: 0; flex: 1 1 auto; overflow-y: auto; }
+  li { padding: .2em .6em; font: 12px/1.5 var(--tz-ui-font, monospace); cursor: pointer;
+       border-bottom: 1px solid #161122; color: #ffcc66; }
+  li .sub { color: #7a5f9a; margin-left: 1em; }
+  li.sel { background: #241a33; color: #ff9f1c; }
+  li.sel .sub { color: #cc99cc; }
+  #foot { flex: 0 0 auto; padding: .2em .5em; border-top: 1px solid #333;
+          color: #6a5c80; font: 11px/1.5 var(--tz-ui-font, monospace); white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div id="head">
+  <span class="title" id="title">list</span>
+  <span id="count"></span>
+  <input id="filter" type="text" autocomplete="off" spellcheck="false"
+         placeholder="filter… ↑↓ select · Enter open · Del remove">
+</div>
+<ul id="list"></ul>
+<div id="foot"></div>
+
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/ticket.js"></script>
+<script src="../../lib/core/store.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/core/commands.js"></script>
+<script src="../../lib/core/open-page.js"></script>
+<script src="../../lib/list/dict.js"></script>
+<script src="../../lib/code/code-locate.js"></script>
+<script src="../../lib/core/work-log.js"></script>
+<script src="../../lib/xipe/xipe-client.js"></script>
+<script src="../../lib/xipe/xipe-place.js"></script>
+<script src="../../lib/task/task-table.js"></script>
+<script src="../../lib/task/task-list.js"></script>
+<script src="../../lib/skin/frame-layout.js"></script>
+<script src="../../lib/list/list-kinds.js"></script>
+<script>
+(function () {
+  'use strict';
+  var bus = Tezcatl.bus;
+  var q = new URLSearchParams(location.search);
+  var configName = q.get('config') || q.get('kind') || 'commands';
+  var paneName = q.get('name') || ('list:' + configName);
+
+  Tezcatl.panelFrame.init({ role: 'list', name: paneName });
+
+  var filterEl = document.getElementById('filter');
+  var listEl = document.getElementById('list');
+  var titleEl = document.getElementById('title');
+  var countEl = document.getElementById('count');
+  var footEl = document.getElementById('foot');
+
+  Tezcatl.panelFrame.setFocusTarget(filterEl);
+
+  var cfg = null;
+  var kind = null;
+  var api = { bus: bus, windowsUrl: null, fsBase: null, log: log, params: q };
+  var all = [];
+  var shown = [];
+  var sel = 0;
+  var unsub = null;
+
+  function log(s) { footEl.textContent = String(s); }
+
+  // code.list / code.find / code.goto / code.open-at run here when invoked
+  // here (the palette); one sent around the bus is not (lib/code/code-locate.js)
+  if (Tezcatl.codeLocate) Tezcatl.codeLocate.register(Tezcatl.commands, Tezcatl.codeLocate.pageEnv(window), { say: log });
+
+  Tezcatl.config.load().then(function (c) {
+    var c0 = (c && c.connections && c.connections[0]) || {};
+    api.windowsUrl = deriveWindowsUrl(c0.url);
+    api.fsBase = deriveHttpBase(c0.url);
+    return fetch(Tezcatl.config.sibling('list_kinds/' + configName + '.json'), { cache: 'no-store' });
+  }).then(function (r) {
+    if (!r.ok) throw new Error('list_kinds/' + configName + '.json: HTTP ' + r.status);
+    return r.json();
+  }).then(function (doc) {
+    cfg = doc || {};
+    titleEl.textContent = cfg.title || configName;
+    document.title = 'Tezcatl — ' + (cfg.title || configName);
+    // only the kind shown is read (lib/list/kinds/<kind>.js)
+    return Tezcatl.listKinds.load(cfg.kind).then(function (k) {
+      kind = k;
+      if (cfg.kind === 'commands') return Tezcatl.commands.load().catch(function(){}).then(start);
+      start();
+    });
+  }).catch(function (e) {
+    log('load failed: ' + (e && e.message || e));
+  });
+
+  function start() {
+    Promise.resolve(kind.fill(cfg, api)).then(setItems, function (e) {
+      log('fill failed: ' + (e && e.message || e));
+    });
+    if (kind.subscribe) {
+      unsub = kind.subscribe(cfg, api, setItems);
+    }
+    if (cfg.hint) log(cfg.hint);
+    filterEl.focus();
+  }
+
+  // A key bound in cfg.keys. One plain character (no C-/M-) acts only while
+  // the filter field is empty -- otherwise it is typed into the filter, so a
+  // binding like dict's `p` never eats a letter of what is being typed. A key
+  // whose action reads the filter text is bound with a modifier (M-a, M-n).
+  function cfgKeyName(e) {
+    if (!cfg || !cfg.keys || e.key === 'Shift' || e.key === 'Control' ||
+        e.key === 'Alt' || e.key === 'Meta') return null;
+    if (!e.ctrlKey && !e.altKey && e.key.length === 1 && filterEl.value !== '') return null;
+    var pfx = (e.ctrlKey ? 'C-' : '') + (e.altKey ? 'M-' : '');
+    var a = pfx + e.key;
+    var b = pfx + e.key.toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(cfg.keys, a)) return a;
+    if (Object.prototype.hasOwnProperty.call(cfg.keys, b)) return b;
+    return null;
+  }
+
+  function setItems(items) {
+    all = Array.isArray(items) ? items : [];
+    if (kind.order) all = kind.order(all, cfg);
+    applyFilter();
+  }
+
+  function applyFilter() {
+    var f = filterEl.value.trim().toLowerCase();
+    shown = !f
+      ? all.slice()
+      : all.filter(function (it) {
+          return (
+            (it.label || '').toLowerCase().indexOf(f) !== -1 ||
+            (it.sub || '').toLowerCase().indexOf(f) !== -1
+          );
+        });
+    if (sel >= shown.length) sel = Math.max(0, shown.length - 1);
+    render();
+  }
+
+  function render() {
+    listEl.textContent = '';
+    var emptyMsg = (cfg && cfg.labels && cfg.labels.empty) || '(empty)';
+    countEl.textContent = '  ' + shown.length + '/' + all.length;
+    if (!shown.length) {
+      var li = document.createElement('li');
+      li.textContent = emptyMsg;
+      li.style.color = '#6a5c80';
+      listEl.appendChild(li);
+      return;
+    }
+    shown.forEach(function (it, i) {
+      var li = document.createElement('li');
+      if (i === sel) li.className = 'sel';
+      var lab = document.createElement('span');
+      lab.textContent = it.label || it.id || '(item)';
+      li.appendChild(lab);
+      if (it.sub) {
+        var sub = document.createElement('span');
+        sub.className = 'sub';
+        sub.textContent = it.sub;
+        li.appendChild(sub);
+      }
+      li.addEventListener('click', function () {
+        sel = i;
+        render();
+        choose();
+      });
+      listEl.appendChild(li);
+    });
+    var selEl = listEl.children[sel];
+    if (selEl && selEl.scrollIntoView) selEl.scrollIntoView({ block: 'nearest' });
+  }
+
+  function choose() {
+    var it = shown[sel];
+    if (!it || !kind.onSelect) return;
+    try { kind.onSelect(it, cfg, api); } catch (e) { log('onSelect: ' + e); }
+  }
+
+  function removeSel() {
+    var it = shown[sel];
+    if (!it || !kind.remove) { log('this list is not removable'); return; }
+    Promise.resolve(kind.remove(it, cfg, api)).then(function (r) {
+      if (r && r.items) { done(r); return; }
+      if (!kind.subscribe) {
+        all = all.filter(function (x) { return x !== it; });
+        applyFilter();
+      }
+    });
+  }
+
+  // What an edit returns, when it says: {items} -- the list as it is now
+  // (no waiting for the next poll), {message} -- for the foot, {select} --
+  // the id to keep selected (an item that moved).
+  function done(r) {
+    if (!r) return r;
+    if (r.items) setItems(r.items);
+    if (r.select != null) {
+      for (var i = 0; i < shown.length; i++) if (shown[i].id === r.select) { sel = i; render(); break; }
+    }
+    if (r.message) log(r.message);
+    return r;
+  }
+
+  // list.action {list, action, args}: an operation on this list from
+  // outside -- a skin translating its own commands (the tree skin's
+  // `tree ...`) -- done by kind.onAction. The answer goes back to the sender
+  // as list.result {list, action, ok, message}.
+  bus.on('list.action', function (p, meta) {
+    if (!p || p.list !== paneName) return;
+    function answer(ok, message) {
+      if (meta && meta.from && meta.from.id) {
+        bus.post('list.result', { list: paneName, action: p.action, ok: ok, message: message || '' }, { to: meta.from.id });
+      }
+    }
+    if (!kind || !kind.onAction) { answer(false, 'this list takes no actions'); return; }
+    Promise.resolve(kind.onAction(p.action, p.args || {}, shown[sel], cfg, api)).then(function (r) {
+      done(r);
+      answer(!r || r.ok !== false, r && r.message);
+    }, function (e) { answer(false, String(e && e.message || e)); });
+  });
+
+  filterEl.addEventListener('input', function () {
+    sel = 0;
+    applyFilter();
+  });
+
+  filterEl.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      sel = Math.min(shown.length - 1, sel + 1);
+      render();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      sel = Math.max(0, sel - 1);
+      render();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      choose();
+    } else if (e.key === 'Delete' || (e.ctrlKey && e.key === 'd')) {
+      e.preventDefault();
+      removeSel();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      sel = 0;
+      render();
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      sel = shown.length - 1;
+      render();
+    } else {
+      var ck = cfgKeyName(e);
+      if (ck) {
+        e.preventDefault();
+        if (kind && kind.onKey) Promise.resolve(kind.onKey(ck, shown[sel], cfg, api, filterEl.value)).then(done);
+      }
+    }
+  });
+
+  window.addEventListener('pagehide', function () { if (unsub) unsub(); });
+
+  function deriveWindowsUrl(u) {
+    if (typeof u !== 'string') return null;
+    try {
+      var x = new URL(u);
+      x.protocol = x.protocol === 'wss:' ? 'https:' : 'http:';
+      x.pathname = '/windows'; x.search = ''; x.hash = '';
+      return x.toString();
+    } catch (_) { return null; }
+  }
+
+  // Base http(s)://host for kinds that read/write real files via /fs (e.g.
+  // "task" -- unlike list_kinds/*.json itself, task data is generated/
+  // writable, so it must go through the relay, not the static pages server.
+  function deriveHttpBase(u) {
+    if (typeof u !== 'string') return null;
+    try {
+      var x = new URL(u);
+      return (x.protocol === 'wss:' ? 'https:' : 'http:') + '//' + x.host;
+    } catch (_) { return null; }
+  }
+})();
+</script>
+</body>
+</html>

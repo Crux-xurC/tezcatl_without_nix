@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — db_bar</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; background: #0a0710; color: #9a7fc0; display: flex; align-items: center;
+         gap: 1em; padding: 0 .7em; box-sizing: border-box; overflow: hidden; white-space: nowrap;
+         font: 12px/1.5 var(--tz-ui-font, monospace); }
+  #num { color: #ff9f1c; flex: 0 0 auto; }
+  #where { flex: 0 0 auto; color: #ccc; }
+  #state { flex: 0 0 auto; }
+  #state.waiting { color: #8fd18f; }
+  #state.running { color: #ffcc66; }
+  #state.logged-out, #state.no-relay, #state.refused { color: #e07070; }
+  #login { flex: 0 0 auto; display: flex; gap: .5em; align-items: center; color: #ffcc66; }
+  #login[hidden] { display: none; }
+  #login input { background: #000; color: #ffcc99; border: 1px solid #444; padding: 0 .4em; font: inherit; width: 10em; }
+  #msg { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; color: #9a7fc0; }
+</style>
+</head>
+<body>
+<span id="num">db ?</span>
+<span id="where"></span>
+<span id="state">connecting</span>
+<span id="login" hidden>account <input id="account" autocomplete="off" spellcheck="false">
+  password <input id="password" type="password" autocomplete="off"></span>
+<span id="msg"></span>
+
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/ticket.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/db/sql.js"></script>
+<script src="../../lib/db/db-bar-page.js"></script>
+</body>
+</html>

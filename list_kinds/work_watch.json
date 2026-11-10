@@ -1,0 +1,8 @@
+{
+  "title": "Work (running)",
+  "kind": "work",
+  "only": "running",
+  "pollMs": 1000,
+  "labels": { "empty": "(nothing is running)" },
+  "hint": "what is still waited for (slow: longer than its pair allows) ── Enter: to the panel that fired it · Del: stop it (when it can be)"
+}

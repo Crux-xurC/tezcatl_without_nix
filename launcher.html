@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="lib/core/fonts.css">
+<title>Tezcatl — launcher (minimal)</title>
+<link rel="stylesheet" href="lib/core/tezcatl.css">
+<style>
+  
+  body { font: 14px/1.5 var(--tz-ui-font, monospace); margin: 2rem; max-width: 44rem;
+         color: #a6e22e; }
+  form { display: flex; gap: .5rem; margin: 1rem 0; }
+  #cmd { flex: 1; padding: .4rem .5rem; font: inherit; }
+  button { padding: .4rem .9rem; font: inherit; }
+  #log { background: #111; color: #a6e22e; padding: .75rem; min-height: 6rem;
+         white-space: pre-wrap; border-radius: 4px; }
+  code { background: #333; color: #6f6; padding: 0 .25em; border-radius: 3px; }
+</style>
+</head>
+<body>
+<h1>Tezcatl launcher (minimal)</h1>
+<p>
+  The minimal fallback of <code>main.html</code>: no page list, no image, only a
+  hard-coded map of targets. It works even where the manifest
+  (<code>list_kinds/panels_and_skins.json</code>) cannot be read.<br>
+  A start page that does not depend on emacs. <strong>It opens no WebSocket.</strong>
+  Type a command and Enter to open a window of input / output / dialogue-input / dialogue-output / xterm / w_list / skin / commands / nav / code / code_editor.
+</p>
+<p>
+  Grammar: <code>new &lt;target&gt; [&lt;how&gt;]</code><br>
+  &lt;target&gt; = <code>input</code> | <code>output</code> | <code>dialogue-input</code> | <code>dialogue-output</code> | <code>xterm</code> | <code>w_list</code> | <code>skin</code> | <code>commands</code> | <code>nav</code> | <code>code</code> | <code>code_editor</code>
+  (required. Aliases: <code>term</code>=<code>xterm</code>, <code>wlist</code> / <code>windows</code>=<code>w_list</code>, <code>basic</code>=<code>skin</code>, <code>codevi</code>=<code>code_editor</code>)<br>
+  <code>skin</code> = <code>panels/skins/basic.html</code> (a trial skin with input and output side by side; the leave key opens nav).
+  <code>w_list</code> / <code>commands</code> / <code>nav</code> = <code>panels/tool/list.html?config=…</code> (the generic list).
+  <code>code</code> = <code>panels/resident/code.html</code> (a read-only CodeMirror viewer), <code>code_editor</code> = <code>panels/resident/code_editor.html</code> (the file editor; its keymap is code.json's editorKeymap, vim by default). Alone it is a scratch; <code>?lang=</code> hints the language<br>
+  &lt;how&gt; = <code>tab</code> | <code>window</code>
+  (default: <code>launcher.open-mode</code> of <code>config.json</code>)<br>
+  Any word order; the leading <code>new</code> may be left out.
+  E.g. <code>new input</code> / <code>new output window</code> / <code>dialogue-input</code> / <code>xterm window</code> / <code>w_list</code>
+</p>
+<p>
+  Windows opened: <code>panels/resident/input.html?name=…</code> / <code>panels/resident/output.html?name=…</code> /
+  <code>panels/resident/dialogue-input.html?name=…</code> / <code>panels/resident/dialogue-output.html?name=…</code>
+  (<code>?name=</code> is required: it goes on the relay's ledger of connections. dialogue-input / dialogue-output are the driving / observing sides of
+  emacs-vent's dialogue bridge, the same vent connection as input / output),
+  <code>panels/resident/code.html?name=…</code> / <code>panels/resident/code_editor.html?name=…</code> (CodeMirror
+  viewer / editor. <code>?name=</code> is the panel-bus identity, not a vent connection ── not on the ledger),
+  <code>panels/resident/xterm.html</code> (the PTY terminal),
+  <code>relay-console/w_list.html</code> (the relay's list of connections).
+  The last two are not vent connections, so they take no <code>?name=</code>.
+  <a href="relay-console/w_list.html" target="_blank">open w_list directly</a>.
+</p>
+
+<form id="f">
+  <input id="cmd" type="text" autocomplete="off" autofocus placeholder="new input">
+  <button type="submit">run</button>
+</form>
+<div id="log"></div>
+
+<script src="lib/core/config.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var logEl = document.getElementById('log');
+  var cmdEl = document.getElementById('cmd');
+
+  var pageTag = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  var seq = 0;
+
+  var cfg = null;
+  Tezcatl.config.load()
+    .then(function (c) { cfg = c; })
+    .catch(function () { });
+
+  function log(line) {
+    logEl.textContent += line + '\n';
+  }
+
+  function launcherCfg(c) {
+    var l = (c && c.launcher) || {};
+    return {
+      openMode: l['open-mode'] || 'tab',
+      nameTpl: l['window-name'] || 'tezcatl-{n}',
+      features: l['window-features'] || 'width=1200,height=800'
+    };
+  }
+
+  function parseCmd(raw) {
+    var toks = String(raw || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!toks.length) return { error: 'an empty command (e.g. new input)' };
+    var what = null, how = null, bad = [];
+    toks.forEach(function (t) {
+      if (t === 'new') return;
+      else if (t === 'input' || t === 'output' || t === 'dialogue-input' ||
+               t === 'dialogue-output' || t === 'xterm' || t === 'w_list' ||
+               t === 'skin' || t === 'commands' || t === 'nav' ||
+               t === 'code' || t === 'code_editor' || t === 'claude' || t === 'codex' ||
+               t === 'killring' || t === 'tree' || t === 'lsp') what = t;
+      else if (t === 'term') what = 'xterm';
+      else if (t === 'llm') what = 'claude';
+      else if (t === 'codevi' || t === 'code_vi') what = 'code_editor';
+      else if (t === 'wlist' || t === 'windows') what = 'w_list';
+      else if (t === 'basic') what = 'skin';
+      else if (t === 'tab' || t === 'window') how = t;
+      else bad.push(t);
+    });
+    if (bad.length) return { error: 'unknown word: ' + bad.join(' ') };
+    if (!what) return { error: 'name a target (input / output / dialogue-input / dialogue-output / xterm / claude / codex / w_list / skin / commands / nav / code / code_editor)' };
+    return { what: what, how: how };
+  }
+
+  function openWindow(what, how, lc) {
+    seq += 1;
+    var name = lc.nameTpl.replace('{n}', pageTag + '-' + seq);
+    var page =
+      what === 'output'          ? 'panels/resident/output.html' :
+      what === 'dialogue-input'  ? 'panels/resident/dialogue-input.html' :
+      what === 'dialogue-output' ? 'panels/resident/dialogue-output.html' :
+      what === 'xterm'           ? 'panels/resident/xterm.html' :
+      what === 'claude'          ? 'panels/resident/xterm.html?cmd=claude&size=15' :
+      what === 'codex'           ? 'panels/resident/xterm.html?cmd=codex&size=15' :
+      what === 'w_list'          ? 'panels/tool/list.html?config=w_list' :
+      what === 'commands'        ? 'panels/tool/list.html?config=commands' :
+      what === 'nav'             ? 'panels/tool/list.html?config=nav' :
+      what === 'killring'        ? 'panels/tool/list.html?config=killring' :
+      what === 'lsp'             ? 'panels/tool/list.html?config=lsp' :
+      what === 'tree'            ? 'panels/resident/tree.html' :
+      what === 'skin'            ? 'panels/skins/basic.html' :
+      what === 'code'            ? 'panels/resident/code.html' :
+      what === 'code_editor'         ? 'panels/resident/code_editor.html' :
+      'panels/resident/input.html';
+    var noName =
+      what === 'xterm' || what === 'claude' || what === 'codex' || what === 'w_list' ||
+      what === 'commands' || what === 'nav' || what === 'killring' || what === 'tree' ||
+      what === 'lsp' || what === 'skin';
+    if (page.charAt(0) !== '/') page = '/' + page;
+    var url = noName ? page : page + '?name=' + encodeURIComponent(name);
+    var features = how === 'window' ? lc.features : '';
+    var w = window.open(url, name, features);
+
+    if (!w) {
+      log('! popup blocked for ' + name + ' -- allow popups for this origin');
+    } else {
+      log('opened ' + name + '  (' + what + ', ' + how + ')  ' + url);
+    }
+  }
+
+  document.getElementById('f').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var cmd = parseCmd(cmdEl.value);
+    cmdEl.value = '';
+    if (cmd.error) { log('! ' + cmd.error); return; }
+    var lc = launcherCfg(cfg);
+    openWindow(cmd.what, cmd.how || lc.openMode, lc);
+  });
+})();
+</script>
+</body>
+</html>

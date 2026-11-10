@@ -1,0 +1,6 @@
+{
+  "title": "Bookmarks",
+  "kind": "bookmarks",
+  "labels": { "empty": "(no bookmarks -- press m on a tree row)" },
+  "hint": "Enter: open / go to the directory · Del: delete"
+}

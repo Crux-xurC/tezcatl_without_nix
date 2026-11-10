@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — markdown</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; background: #000; color: #ddd; display: flex; flex-direction: column;
+         font: 13px/1.6 var(--tz-ui-font, sans-serif); }
+  #head { flex: 0 0 auto; display: flex; gap: 1em; align-items: center; padding: 3px 10px;
+          font: 11px/1.6 var(--tz-ui-font, monospace); background: #0a0710; color: #9a7fc0;
+          border-bottom: 1px solid #241a33; white-space: nowrap; overflow: hidden; }
+  #head b { color: #ff9f1c; font-weight: normal; }
+  #head #mode.follow { color: #7fd1a8; }
+  #doc { flex: 1 1 auto; overflow: auto; padding: .4em 1.2em 2em; outline: none; }
+  #doc > .blk { border-left: 3px solid transparent; padding-left: .6em; margin-left: -.9em; }
+  #doc > .blk.here { border-left-color: #6a5c80; }
+  #doc > .blk.sel { background: #120d1e; }
+  #doc:focus > .blk.sel { background: #1b1430; border-left-color: #ff9f1c; }
+  #doc .empty { color: #4d4460; padding: .5em 0; }
+  h1, h2, h3, h4, h5, h6 { color: #ffcf7a; font-weight: normal; margin: .9em 0 .3em; line-height: 1.3; }
+  h1 { font-size: 1.6em; } h2 { font-size: 1.35em; } h3 { font-size: 1.15em; } h4, h5, h6 { font-size: 1em; }
+  p { margin: .4em 0; }
+  a { color: #8ab4f8; cursor: pointer; text-decoration: underline; }
+  code, pre, .raw { font-family: var(--tz-code-font, monospace); }
+  code { background: #1a1424; padding: 0 .25em; border-radius: 2px; }
+  pre { background: #0d0a14; border: 1px solid #241a33; padding: .5em .7em; overflow: auto; margin: .5em 0; }
+  pre .lang { display: block; color: #6a5c80; font-size: .85em; }
+  .raw { color: #9a7fc0; white-space: pre-wrap; }
+  .img { color: #ffcf7a; font-style: italic; }
+  blockquote { border-left: 3px solid #3a2d52; margin: .4em 0; padding: 0 .8em; color: #b9b0c9; }
+  hr { border: 0; border-top: 1px solid #3a2d52; margin: 1em 0; }
+  ul, ol { margin: .3em 0; padding-left: 1.6em; }
+  li.task { list-style: none; margin-left: -1.3em; }
+  li.task input { margin: 0 .5em 0 0; pointer-events: none; }
+  table { border-collapse: collapse; margin: .5em 0; }
+  caption { caption-side: top; text-align: left; color: #9a7fc0; font-size: .9em; padding-bottom: .2em; }
+  th, td { border: 1px solid #3a2d52; padding: .15em .6em; }
+  th { color: #ffcf7a; font-weight: normal; background: #120d1e; }
+  #foot { flex: 0 0 auto; padding: .2em .7em; color: #6a5c80; border-top: 1px solid #241a33;
+          font: 11px/1.5 var(--tz-ui-font, monospace); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #foot.err { color: #ff7a6b; }
+</style>
+</head>
+<body>
+<div id="head"><b>markdown</b><span id="path"></span><span id="mode"></span></div>
+<div id="doc" tabindex="0"></div>
+<div id="foot">j / k: select a block · Enter: to its line · f: follow / unfollow the code_editor · t: a table into a task_table · r: read again</div>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/code/code-files.js"></script>
+<script src="../../lib/code/code-locate.js"></script>
+<script src="../../lib/code/code-diff.js"></script>
+<script src="../../lib/code/markdown.js"></script>
+<script type="module" src="../../lib/code/markdown-page.js"></script>
+</body>
+</html>

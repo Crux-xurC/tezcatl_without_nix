@@ -1,0 +1,8 @@
+{
+  "title": "skins",
+  "kind": "skin_list",
+  "pollMs": 3000,
+  "hint": "the skins kept by skin save ── Enter: in a new frame window · M-r: read into the frame focused last",
+  "labels": { "empty": "(no skin is kept: skin save <name> keeps one)" },
+  "keys": { "M-r": "read" }
+}

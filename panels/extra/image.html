@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — image</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  html, body { height: 100%; margin: 0; background: #000; }
+  #view { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  #what { position: absolute; left: .6em; bottom: .4em; color: #7a5f9a; font: 11px/1.4 var(--tz-ui-font, monospace); }
+  #err { position: absolute; left: .6em; right: .6em; top: .4em; color: #ff7a6b; background: #000a;
+         font: 12px/1.4 var(--tz-ui-font, monospace); }
+  #err:empty { display: none; }
+</style>
+</head>
+<body>
+<div id="view"><img id="img" alt=""></div>
+<div id="what"></div>
+<div id="err"></div>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/view/image.js"></script>
+<script src="../../lib/view/image-page.js"></script>
+</body>
+</html>

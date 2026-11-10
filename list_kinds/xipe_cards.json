@@ -1,0 +1,7 @@
+{
+  "title": "Xipe Totec cards",
+  "kind": "xipe_cards",
+  "labels": { "empty": "(no functions -- scan the project first: `scan` in the dialogue window)" },
+  "hint": "Enter: the card in matrix.html · M-d: to the definition",
+  "keys": { "M-d": "define" }
+}

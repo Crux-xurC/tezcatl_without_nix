@@ -1,0 +1,39 @@
+{
+  "intents": [
+    {
+      "id": "db.tables",
+      "title": "Tables (a table)",
+      "desc": "The tables of the database window 1 is logged in to (their names like <like>, from information_schema: SHOW takes no ? in a prepared statement), drawn as a table in decode_emacs. Run on database window 1's session; nothing is sent to Emacs.",
+      "needs": [],
+      "params": [{"name": "like", "type": "string", "default": "%", "from": {"kind": "user-input"}, "doc": "a LIKE pattern (default %: every table)"}],
+      "locals": {},
+      "emacs": { "kind": "none" },
+      "sql": { "statement": "select table_name from information_schema.tables where table_schema = database() and table_name like ? order by table_name", "args": ["like"] },
+      "browser": { "backend": null, "post": { "refresh": [] } },
+      "result": { "via": "db", "shape": "json", "table": { "from": "rows", "rows": "arrays", "columns": [{"key": "table", "from": "0"}] } },
+      "idempotent": true,
+      "notes": "D-db-session. The answer is the relay's as it is ({columns, rows, num_rows}); a row is an array, so the column is taken by its index. like goes to the ? as a value (a prepared statement), never into the text."
+    },
+    {
+      "id": "db.magit-section",
+      "title": "Changed files of one section (a book shaped on window 1)",
+      "desc": "The book of magit.changed-files' table (b in its decode_emacs: ~work/books/decode/magit.changed-files.json) made the temporary table t_in on database window 1, and its files of one section (unstaged by default) taken from it in the book's order. A table in decode_emacs, and the rows of a run_table (run from db.magit-section): the template magit_stage stages each.",
+      "needs": [],
+      "params": [
+        {"name": "book", "type": "string", "default": "decode/magit.changed-files", "from": {"kind": "user-input"}, "doc": "a book under ~work/books (without .json) with the columns section and path"},
+        {"name": "section", "type": "string", "default": "unstaged", "from": {"kind": "user-input"}, "doc": "the section of the files taken (unstaged, untracked, staged ...)"}
+      ],
+      "locals": {},
+      "emacs": { "kind": "none" },
+      "sql": { "load": [{"book": "book", "as": "t_in"}], "statement": "select section, path from t_in where section = ? order by _n", "args": ["section"] },
+      "browser": { "backend": null, "post": { "refresh": [] } },
+      "result": {
+        "via": "db", "shape": "json",
+        "table": { "from": "rows", "rows": "arrays", "columns": [{"key": "section", "from": "0"}, {"key": "path", "from": "1"}], "link": "path" },
+        "book": { "template": "magit_stage", "from": "rows", "rows": "arrays", "put": {"section": "0", "path": "1"} }
+      },
+      "idempotent": true,
+      "notes": "D-db-session: an example of the flow -- an intent's answer made a table (decode_emacs), the table a book (b), the book shaped by a statement on window 1 (sql.load), the answer the rows of a run_table (result.book). The book's columns are text; _n is its order."
+    }
+  ]
+}

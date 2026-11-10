@@ -1,0 +1,7 @@
+{
+  "title": "code_editor",
+  "kind": "code_windows",
+  "pollMs": 1500,
+  "hint": "the code_editor open now (● is unsaved) ── Enter goes to that code_editor",
+  "labels": { "empty": "(no code_editor is open)" }
+}

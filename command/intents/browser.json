@@ -1,0 +1,43 @@
+{
+  "intents": [
+    {
+      "id": "compile.run",
+      "title": "M-x compile",
+      "desc": "Build the compile command from the language of the code_*.html focused last, and send cd and then the compile command to the xterm.html focused last. Nothing is sent to Emacs -- it runs locally from resolver.dispatch's browser.backend branch (lib/vent/compile-intent.js).",
+      "needs": [],
+      "params": [],
+      "locals": {},
+      "emacs": { "kind": "none" },
+      "browser": { "backend": "compile", "post": { "refresh": [] } },
+      "result": { "via": "none", "shape": "none" },
+      "idempotent": false,
+      "notes": "The target panels are resolved from cursor.html's focusHistory (role: code / xterm), so it works the same in any skin and in separate windows. The cd target is decided by compile.json's scope (file/self/root)."
+    },
+    {
+      "id": "agenda.open",
+      "title": "Agenda",
+      "desc": "Open or focus the Agenda (the task list a task_table cut, panels/tool/list.html?config=agenda; D-task-list). Nothing more. Changing a state or making a task is done with that panel's own keys (t / d / x / M-n) -- there is no operation on tasks that are not on screen.",
+      "needs": [],
+      "params": [],
+      "locals": {},
+      "emacs": { "kind": "none" },
+      "browser": { "backend": "agenda", "post": { "refresh": [] } },
+      "result": { "via": "none", "shape": "none" },
+      "idempotent": true,
+      "notes": "The tasks are rows of a note's markdown table (Table: <name>), edited in a task_table and cut into the task list (~work/books/task_list.json) -- not org-mode's syntax or files; only the vocabulary (TODO/DONE, C-c a) follows Emacs org-mode."
+    },
+    {
+      "id": "compile.run-nix",
+      "title": "M-x nix compile",
+      "desc": "The same as compile.run, but an environment wrapper (default nix develop --command) is put in front of the built command before it is sent.",
+      "needs": [],
+      "params": [],
+      "locals": {},
+      "emacs": { "kind": "none" },
+      "browser": { "backend": "compile", "prefix": ["nix", "develop", "--command"], "post": { "refresh": [] } },
+      "result": { "via": "none", "shape": "none" },
+      "idempotent": false,
+      "notes": "prefix is an extra field only lib/vent/compile-intent.js reads (not resolver.js). The prefix is put in front of the argv, which is then made into one shell line (argv joining, not a string template, so the command's quoting needs no second thought)."
+    }
+  ]
+}

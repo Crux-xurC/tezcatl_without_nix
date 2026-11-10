@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<title>Tezcatl — intent skin</title>
+<style>
+  
+  :root {
+    --tzp-border: #333; --tzp-bg: #111; --tzp-focus: #8cb4ff;
+    --tzp-head: #9a7fc0; --tzp-headfg: #ff9f1c; --tzp-headbg: #0a0710;
+    --tzp-split: #222; --tzp-splith: #8cb4ff;
+  }
+  html, body { height: 100%; margin: 0; background: #000; color: #ddd;
+               font: 13px/1.5 var(--tz-ui-font, monospace); }
+  #skin { display: flex; flex-direction: column; height: 100%; }
+  #bar { flex: 0 0 auto; display: flex; gap: 1em; align-items: center;
+         padding: .25em .7em; background: #0a0710; color: #9a7fc0;
+         border-bottom: 1px solid #333; }
+  #bar b { color: #ff9f1c; font-weight: normal; }
+  #bar .hint { color: #6a5c80; }
+  #stage { flex: 1 1 auto; min-height: 0; }
+</style>
+</head>
+<body>
+<div id="skin">
+  <div id="bar">
+    <b>Tezcatl · intent</b>
+    <span id="status">…</span>
+    <span class="hint">left: run an intent id in input · right: the transcript of what is sent (the Elisp as unsent, with live status) · when stuck, "C-g" in input</span>
+  </div>
+  <div id="stage"></div>
+</div>
+
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/store.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/core/commands.js"></script>
+<script src="../../lib/core/panes.js"></script>
+<script>
+(function () {
+  'use strict';
+  var bus = Tezcatl.bus;
+  var statusEl = document.getElementById('status');
+
+  Tezcatl.panelFrame.init({ role: 'skin', name: 'intent' });
+  Tezcatl.commands.load().catch(function () {});
+  Tezcatl.commands.listenBus();
+
+  var panes = Tezcatl.panes.mount(
+    document.getElementById('stage'),
+    {
+      dir: 'row',
+      children: [
+        { panel: 'input',     src: 'panels/resident/input.html',           name: 'input-1',    size: 2 },
+        { panel: 'el-intent', src: 'panels/resident/code_el_intent.html',  name: 'el-intent-1', size: 3 },
+      ],
+    },
+    { id: 'intent' },
+  );
+
+  var transcriptId = null;
+  var pendingText = null;
+
+  bus.on('code.ready', function (payload, meta) {
+    if (!(meta && meta.from && meta.from.role === 'el-intent')) return;
+    transcriptId = meta.from.id;
+    if (pendingText != null) { pushText(pendingText); pendingText = null; }
+  });
+
+  bus.on('resolver.trace', function (payload) {
+    var text = payload && payload.text;
+    if (typeof text !== 'string') return;
+    if (transcriptId) pushText(text);
+    else pendingText = text;
+  });
+
+  function pushText(text) {
+    bus.post('code.set', { text: text }, { to: transcriptId });
+    statusEl.textContent = 'trace updated ' + new Date().toTimeString().slice(0, 8);
+  }
+
+  bus.on('yield', function () {
+    var ps = panes.panes();
+    if (!ps.length) return;
+    var cur = panes.focusedId();
+    var i = 0;
+    for (var k = 0; k < ps.length; k++) if (ps[k].id === cur) i = k;
+    panes.focus(ps[(i + 1) % ps.length].id);
+  });
+
+  statusEl.textContent = 'ready';
+})();
+</script>
+</body>
+</html>

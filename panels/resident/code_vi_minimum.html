@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — code_vi_minimum</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; background: #000; color: #ddd; display: flex; flex-direction: column;
+         font-family: var(--tz-ui-font, monospace); }
+  #head { flex: 0 0 auto; display: flex; gap: 1em; align-items: center; padding: 2px 10px;
+          font: 11px/1.6 var(--tz-ui-font, monospace); background: #0a0710; color: #9a7fc0;
+          border-bottom: 1px solid #241a33; white-space: nowrap; overflow: hidden; }
+  #head b { color: #ff9f1c; font-weight: normal; }
+  #editor { flex: 1 1 auto; min-height: 0; overflow: auto; }
+  #editor .cm-editor { height: 100%; }
+  #foot { flex: 0 0 auto; padding: .1em .7em; color: #6a5c80; border-top: 1px solid #241a33;
+          font: 11px/1.5 var(--tz-ui-font, monospace); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #foot.err { color: #ff7a6b; }
+</style>
+</head>
+<body>
+<div id="head"><b>minimum</b><span id="purpose"></span></div>
+<div id="editor"></div>
+<div id="foot">:m sends it ── :m input / :m xterm / :m code_editor &lt;file&gt; / :m (back to who asked, else the kill ring) · :q drops it</div>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/code/code-files.js"></script>
+<script src="../../lib/code/code-locate.js"></script>
+<script src="../../lib/code/minimum.js"></script>
+<script type="module" src="../../lib/code/minimum-page.js"></script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — input_leadkey</title>
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  /* The lead-key input form: what is typed, and below it what will be sent
+     (lib/skin/input-leadkey-page.js). Keys with a modifier are coloured. */
+  :root { --il-bg: #0a0a0a; --il-fg: #ddd; --il-dim: #777; --il-line: #444; --il-mod: #ff9a3c;
+          --il-err: #f66; --il-ok: #6c6; --il-mark: #2bd5d5; }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: var(--il-bg); color: var(--il-fg);
+               font: 13px/1.4 var(--tz-ui-font, monospace); }
+  body { box-sizing: border-box; padding: 4px 6px; display: flex; flex-direction: column; gap: 3px; }
+  .row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .lbl { color: var(--il-dim); width: 3.5em; flex: none; }
+  #form { flex: 1; min-width: 0; background: transparent; color: inherit; font: inherit;
+          border: 1px solid var(--il-line); padding: 2px 4px; outline: none; }
+  #form:focus { border-color: var(--il-mark); }
+  #mark { color: var(--il-mark); width: 2.5em; flex: none; text-align: center; }
+  #sends { flex: 1; min-width: 0; white-space: pre; overflow: hidden; text-overflow: ellipsis;
+           border: 1px solid var(--il-line); padding: 2px 4px; min-height: 1.4em; }
+  #sends .mod { color: var(--il-mod); }
+  #sends.bad .err { color: var(--il-err); }
+  #sends.bad .at { color: var(--il-dim); }
+  #sends.waiting .wait { color: var(--il-mark); }
+  #note { color: var(--il-dim); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+  #note.err { color: var(--il-err); }
+  #note.ok { color: var(--il-ok); }
+</style>
+</head>
+<body>
+<div class="row"><span class="lbl">type</span><input id="form" type="text" autocomplete="off" spellcheck="false"
+  placeholder="ls ;cd x   (;c ;a ;s ctrl/meta/shift · ;h;j;k;l arrows · ;e return · ;q esc · ;f5 F5 · ;; a ;)"><span id="mark"></span></div>
+<div class="row"><span class="lbl">sends</span><div id="sends"></div><span style="width:2.5em;flex:none"></span></div>
+<div id="note"></div>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/core/commands.js"></script>
+<script src="../../lib/core/lead.js"></script>
+<script src="../../lib/skin/lead-form.js"></script>
+<script src="../../lib/skin/input-leadkey-page.js"></script>
+</body>
+</html>

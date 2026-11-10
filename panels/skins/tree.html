@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<title>Tezcatl — tree skin</title>
+<style>
+  :root {
+    --tzp-border: #333; --tzp-bg: #111; --tzp-focus: #8cb4ff;
+    --tzp-head: #9a7fc0; --tzp-headfg: #ff9f1c; --tzp-headbg: #0a0710;
+    --tzp-split: #222; --tzp-splith: #8cb4ff;
+  }
+  html, body { height: 100%; margin: 0; background: #000; color: #ddd;
+               font: 13px/1.5 var(--tz-ui-font, monospace); }
+  #skin { display: flex; flex-direction: column; height: 100%; }
+  #bar { flex: 0 0 auto; display: flex; gap: 1em; align-items: center;
+         padding: .25em .7em; background: #0a0710; color: #9a7fc0;
+         border-bottom: 1px solid #333; }
+  #bar b { color: #ff9f1c; font-weight: normal; }
+  #bar .hint { color: #6a5c80; }
+  #status { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #stage { flex: 1 1 auto; min-height: 0; }
+</style>
+</head>
+<body>
+<div id="skin">
+  <div id="bar">
+    <b>Tezcatl · tree</b>
+    <span id="status">…</span>
+    <span class="hint">slots: Enter opens the tree · tree: Enter sends the file to code_editor · code_editor: :w saves</span>
+  </div>
+  <div id="stage"></div>
+</div>
+<iframe id="cursor" hidden title="cursor aggregator"></iframe>
+<iframe id="killring" hidden title="kill-ring aggregator"></iframe>
+
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/store.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/core/commands.js"></script>
+<script src="../../lib/core/panes.js"></script>
+<script src="../../lib/skin/tree-commands.js"></script>
+<script src="../../lib/code/code-files.js"></script>
+<script src="../../lib/skin/skin-ex.js"></script>
+<script src="../../lib/code/code-locate.js"></script>
+<script>
+// The tree skin -- treemacs's place: the slots list (the projects, from the
+// slots file) picks the tree's root, the tree shows it and holds what is
+// selected, and the one code_editor pane edits and saves (it writes its own file,
+// a file opened with `tree edit`). The command line at the bottom takes the
+// skin's `tree ...` commands (lib/skin/tree-commands.js): the skin translates them
+// into operations of its slots list, which edits the slots file itself.
+//
+//   slots (list.html?config=slots&tree=<TREE>) --tree.root--> tree
+//   tree --code.open {path}--> skin --/fs/read, code.set--> code_editor
+//   tree --tree.selection {path, dir}--> skin (tree add's default)
+//   code_cmd_in --cmd.input {text}--> skin --list.action--> slots --list.result--> skin
+//   skin --tree.reload--> tree (tree update)
+//   palette / another window --command tree.*--> the tree skin focused last
+//   code_editor `:#` -> the command line; a ":" line there (`:w`, `:e <path>` ...)
+//   -> code_editor (lib/skin/skin-ex.js; code.* tezcatl-commands too); `:12` -> the
+//   line in code_editor, `:find path[:line[:col]]` -> the code_editor that has it
+//   (this one, another window's, or a new one: lib/code/code-locate.js)
+//
+// Pane names carry a per-instance suffix so two open skins never answer
+// each other's panes (the xipe skin's shape).
+(function () {
+  'use strict';
+  var bus = Tezcatl.bus;
+  var statusEl = document.getElementById('status');
+
+  var sfx = Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5);
+  var SLOTS = 'tree-slots-' + sfx, TREE = 'tree-' + sfx, CODE = 'tree-code-' + sfx, CMD = 'tree-cmd-' + sfx;
+
+  Tezcatl.panelFrame.init({ role: 'skin', name: 'tree-skin' });
+  Tezcatl.commands.load().catch(function () {});
+  Tezcatl.commands.listenBus();
+
+  document.getElementById('cursor').src = Tezcatl.config.sibling('panels/invisible/cursor.html');
+  document.getElementById('killring').src = Tezcatl.config.sibling('panels/invisible/killring.html');
+
+  var panes = Tezcatl.panes.mount(
+    document.getElementById('stage'),
+    {
+      dir: 'col',
+      children: [
+        {
+          dir: 'row', size: 5,
+          children: [
+            {
+              dir: 'col', size: 1,
+              children: [
+                { panel: 'list', src: 'panels/tool/list.html?config=slots&tree=' + encodeURIComponent(TREE), name: SLOTS, size: 1 },
+                { panel: 'tree', src: 'panels/resident/tree.html', name: TREE, size: 2 },
+              ],
+            },
+            { panel: 'code', src: 'panels/resident/code_editor.html', name: CODE, size: 3 },
+          ],
+        },
+        { panel: 'cmd', src: 'panels/resident/code_cmd_in.html', name: CMD, size: 1 },
+      ],
+    },
+    { id: 'tree-skin' },
+  );
+
+  function say(t) { statusEl.textContent = t; }
+
+  var fsBase = null;
+  Tezcatl.config.load().then(function (c) {
+    var u = c && c.connections && c.connections[0] && c.connections[0].url;
+    if (!u) { say('config.json has no relay URL'); return; }
+    var x = new URL(u);
+    fsBase = (x.protocol === 'wss:' ? 'https:' : 'http:') + '//' + x.host;
+    say('ready');
+  }).catch(function (e) { say('config: ' + (e && e.message || e)); });
+
+  // -- the code_editor pane --------------------------------------------------------
+  var codeId = null;
+  var codeDirty = false;
+  var codePath = null;
+  var pendingOpen = null;
+
+  function from(meta, name) { return meta && meta.from && meta.from.name === name; }
+
+  bus.on('code.ready', function (_p, meta) {
+    if (!from(meta, CODE)) return;
+    codeId = meta.from.id;
+    if (pendingOpen) { var p = pendingOpen; pendingOpen = null; openInCode(p); }
+  });
+  bus.on('code.dirty', function (p) { if (p && p.name === CODE) codeDirty = !!p.dirty; });
+  bus.on('code.saved', function (p) { if (p && p.name === CODE) say('saved ' + p.path); });
+  // code_editor opened or moved a file itself (:e, :Rename, :Move)
+  bus.on('code.opened', function (p) { if (p && p.name === CODE) codePath = p.path; });
+
+  // one code_editor: opening another file over unsaved edits is refused
+  function openInCode(path, quiet) {
+    if (!codeId || !fsBase) { pendingOpen = path; return; }
+    if (codeDirty) {   // the same file too: reading it again would drop the edits
+      say('code_editor has unsaved changes (' + codePath + ') ── save with :w, then open');
+      return;
+    }
+    fetch(fsBase + '/fs/read?path=' + encodeURIComponent(path), { cache: 'no-store' })
+      // not ok: the relay's reason ("not UTF-8 text ..."), else the status
+      .then(function (r) { return r.ok ? r.text() : r.text().then(function (t) { var j = null; try { j = JSON.parse(t); } catch (_) {} throw new Error((j && j.error) || ('HTTP ' + r.status)); }); })
+      .then(function (text) {
+        bus.post('code.set', { text: text, filename: path }, { to: codeId });
+        codePath = path;
+        codeDirty = false;
+        if (quiet) return;
+        say('opened ' + path);
+        var c = panes.panes().filter(function (p) { return p.role === 'code'; })[0];
+        if (c) panes.focus(c.id);
+      })
+      .catch(function (e) { say('read failed: ' + path + ' ── ' + (e && e.message || e)); });
+  }
+
+  // -- the tree pane ---------------------------------------------------------
+  var selection = null;   // {path, dir} -- what the tree has selected
+  bus.on('tree.selection', function (p, meta) {
+    if (!from(meta, TREE) || !p) return;
+    selection = { path: p.path, dir: !!p.dir };
+  });
+  bus.on('code.open', function (p, meta) {
+    if (!from(meta, TREE) || !p || !p.path) return;
+    openInCode(p.path);
+  });
+  var treeRoot = '';   // what the tree shows (:grep searches it by default)
+  bus.on('tree.root', function (p) {
+    if (p && p.tree === TREE) { treeRoot = p.path || ''; say('tree: ' + (p.tag || p.path || '/')); }
+  });
+
+  // -- the slots list ----------------------------------------------------------
+  // the list says when its file cannot be read; the bar says it too
+  bus.on('slots.state', function (p) {
+    if (p && p.list === SLOTS && p.error) say(p.error + ' ── fix it with tree edit, then tree update');
+  });
+
+  // one operation on the slots list, answered by its list.result
+  function slotsAction(action, args) {
+    return new Promise(function (resolve) {
+      var finished = false;
+      var off = bus.on('list.result', function (p, meta) {
+        if (finished || !from(meta, SLOTS) || !p || p.action !== action) return;
+        finished = true; off(); resolve(p);
+      });
+      bus.post('list.action', { list: SLOTS, action: action, args: args });
+      setTimeout(function () {
+        if (!finished) { finished = true; off(); resolve({ ok: false, message: 'no answer from the list' }); }
+      }, 5000);
+    });
+  }
+
+  var slotsFileP = null;
+  function slotsFile() {
+    if (!slotsFileP) {
+      slotsFileP = fetch(Tezcatl.config.sibling('list_kinds/slots.json'), { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : {}; })
+        .then(function (c) { return (c && c.dataFile) || 'tree.json'; }, function () { return 'tree.json'; });
+    }
+    return slotsFileP;
+  }
+
+  // a directory under the FS root? -> null when it is, else why not
+  function notADir(path) {
+    return fetch(fsBase + '/fs?path=' + encodeURIComponent(path), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? null : r.json().then(function (b) { return (b && b.error) || 'HTTP ' + r.status; }); })
+      .catch(function (e) { return String(e && e.message || e); });
+  }
+
+  // -- the command line --------------------------------------------------------
+  function run(c) {
+    if (c.error) return Promise.resolve({ ok: false, message: c.error });
+    switch (c.cmd) {
+      case 'add': {
+        var path = c.path;
+        if (path == null) {
+          if (!selection) return Promise.resolve({ ok: false, message: 'add: write a path, or select a directory in tree' });
+          if (!selection.dir) return Promise.resolve({ ok: false, message: 'add: a file is selected in tree (' + selection.path + ') ── select a directory' });
+          path = selection.path;
+        }
+        path = path.replace(/^\/+/, '').replace(/\/+$/, '');
+        return notADir(path).then(function (why) {
+          if (why) return { ok: false, message: 'add: ' + (path || '/') + ' cannot be opened as a directory (' + why + ')' };
+          return slotsAction('add', { path: path });
+        });
+      }
+      case 'del': return slotsAction('del', { n: c.n });
+      case 'order': return slotsAction('order', { a: c.a, b: c.b });
+      case 'tag': return slotsAction('tag', { n: c.n, tag: c.tag });
+      case 'update':
+        return slotsAction('update', {}).then(function (r) {
+          bus.post('tree.reload', { tree: TREE });
+          return r;
+        });
+      case 'edit':
+        return (c.path == null ? slotsFile() : Promise.resolve(c.path)).then(function (path) {
+          openInCode(path);
+          return { ok: true, message: '' };   // openInCode says what happened
+        });
+    }
+    return Promise.resolve({ ok: false, message: '?' });
+  }
+
+  // Every tree command goes through exec, one after another, whether typed
+  // in the command line or sent as a command (below); `label` is how the bar
+  // names it.
+  var queue = Promise.resolve();
+  function exec(c, label) {
+    queue = queue.then(function () {
+      return run(c).then(function (r) {
+        if (r && r.message) say((r.ok === false ? '! ' : '') + label + ' ── ' + r.message);
+        // code_editor showing the slots file (and clean) follows the change
+        if (r && r.ok !== false && c.cmd !== 'edit') {
+          return slotsFile().then(function (f) { if (codePath === f && !codeDirty) openInCode(f, true); return r; });
+        }
+        return r;
+      });
+    });
+    return queue;
+  }
+
+  // The commands are also tezcatl-commands (command_map.json's
+  // tree.add ... tree.edit), so the palette or another window can send them.
+  // Those arrive over the bus at every tree skin; only the one focused last
+  // runs them (two skins would both write the slots file). This skin's own
+  // command line passes {local: true} and always runs here.
+  var ARGS = { add: ['path'], del: ['n'], order: ['a', 'b'], tag: ['n', 'tag'], update: [], edit: ['path'] };
+  var active = true;
+  function claim() { active = true; bus.post('tree-skin.active', { id: sfx }); }
+  bus.on('tree-skin.active', function (p) { if (p && p.id !== sfx) active = false; });
+  window.addEventListener('focus', claim);
+  panes.on('focus', claim);
+  claim();
+
+  Object.keys(ARGS).forEach(function (cmd) {
+    Tezcatl.commands.register('tree.' + cmd, function (args, ctx) {
+      if (!(ctx && ctx.local) && !active) return false;
+      var c = { cmd: cmd };
+      ARGS[cmd].forEach(function (k) { c[k] = args && args[k] != null ? args[k] : (k === 'tag' ? '' : null); });
+      return exec(c, (ctx && ctx.line) || ('tree.' + cmd + (args && Object.keys(args).length ? ' ' + JSON.stringify(args) : '')));
+    });
+  });
+
+  // the command line: one line, one command (lib/skin/tree-commands.js reads it)
+  // Vim's ways through the command line: code_editor's `:#` comes here, a ":"
+  // line goes to code_editor (lib/skin/skin-ex.js)
+  var locEnv = Tezcatl.codeLocate.pageEnv(window);
+  function locate(target) {
+    var t = Tezcatl.codeLocate.parseTarget(target);
+    if (t.error) return Promise.resolve({ ok: false, message: t.error });
+    return Tezcatl.codeLocate.openAt(locEnv, t);
+  }
+  // :grep pattern [path] -- in the tree's root unless a path is given
+  function grep(args) {
+    var g = Tezcatl.codeLocate.parseGrep(args);
+    if (g.error) return { ok: false, message: g.error };
+    var where = g.path != null ? g.path : treeRoot;
+    var w = locEnv.open(Tezcatl.codeLocate.grepUrl(locEnv, g.pattern, where), 'tezcatl-grep-' + Date.now().toString(36));
+    return w ? { ok: true, message: 'searching ' + (where || '/') + ' ── the results are in the list window (Enter opens)' }
+             : { ok: false, message: 'could not open a new window (the pop-up was blocked)' };
+  }
+  var skinEx = Tezcatl.skinEx.wire({ bus: bus, panes: panes, code: CODE, cmd: CMD, files: Tezcatl.codeFiles, say: say, locate: locate, grep: grep });
+  skinEx.register(Tezcatl.commands, function (ctx) { return (ctx && ctx.local) || active; });
+  // code.list / code.find / code.goto / code.open-at (one sent around: the tree skin focused last)
+  Tezcatl.codeLocate.register(Tezcatl.commands, locEnv, { say: say, isMine: function (ctx) { return !(ctx && ctx.remote) || active; } });
+
+  bus.on('cmd.input', function (p, meta) {
+    if (!from(meta, CMD)) return;
+    var text = p && typeof p.text === 'string' ? p.text : '';
+    text.split(/\r?\n/).forEach(function (line) {
+      if (!line.trim()) return;
+      if (skinEx.handle(line)) return;
+      var c = Tezcatl.treeCommands.parse(line);
+      if (c.error) {
+        queue = queue.then(function () { say('! ' + line.trim() + ' ── ' + c.error); });
+        return;
+      }
+      var args = {};
+      ARGS[c.cmd].forEach(function (k) { args[k] = c[k]; });
+      Tezcatl.commands.invoke('tree.' + c.cmd, args, { local: true, line: line.trim() });
+    });
+    skinEx.sent();
+  });
+
+  bus.on('yield', function () {
+    var ps = panes.panes();
+    if (!ps.length) return;
+    var cur = panes.focusedId();
+    var i = 0;
+    for (var k = 0; k < ps.length; k++) if (ps[k].id === cur) i = k;
+    panes.focus(ps[(i + 1) % ps.length].id);
+  });
+
+  // for the E2E checks
+  window.treeSkin = {
+    names: { slots: SLOTS, tree: TREE, code: CODE, cmd: CMD },
+    selection: function () { return selection; },
+    codePath: function () { return codePath; },
+  };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+{
+  "label": "xterm",
+  "desc": "an xterm panel of the same skin: the keys as the bytes a terminal sends (terminal.keys, lib/term/keys.js). One per xterm panel open.",
+  "scripts": ["lib/target/xterm.js"]
+}

@@ -1,0 +1,7 @@
+{
+  "title": "Windows",
+  "kind": "w_list",
+  "pollMs": 1500,
+  "labels": { "empty": "(no vent connections)" },
+  "removeKey": "Delete"
+}

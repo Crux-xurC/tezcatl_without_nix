@@ -1,0 +1,15 @@
+{
+  "compilers": {
+    "elixir":     { "scope": "root", "rootMarkers": ["mix.exs"],                    "command": ["mix", "compile"] },
+    "erlang":     { "scope": "root", "rootMarkers": ["rebar.config"],                "command": ["rebar3", "compile"] },
+    "rust":       { "scope": "self", "command": ["cargo", "build"] },
+    "ocaml":      { "scope": "self", "command": ["dune", "build"] },
+    "javascript": { "scope": "root", "rootMarkers": ["package.json"],               "command": ["npm", "run", "build"] },
+    "python":     { "scope": "file", "command": ["python3", "-m", "py_compile", "{{path}}"] },
+    "ruby":       { "scope": "file", "command": ["ruby", "-c", "{{path}}"] },
+    "cpp":        { "scope": "root", "rootMarkers": ["Makefile", "CMakeLists.txt"], "command": ["make"] },
+    "shell":      { "scope": "file", "command": ["bash", "-n", "{{path}}"] },
+    "haskell":    { "scope": "file", "command": ["ghc", "-fno-code", "{{path}}"] },
+    "nix":        { "scope": "self", "command": ["nix", "flake", "check"] }
+  }
+}

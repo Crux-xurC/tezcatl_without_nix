@@ -1,0 +1,7 @@
+{
+  "title": "Work",
+  "kind": "work",
+  "pollMs": 2000,
+  "labels": { "empty": "(nothing recorded yet)" },
+  "hint": "what is running and what ran, the newest first ── Enter: to the panel that fired it · Del: stop it (when it can be)"
+}

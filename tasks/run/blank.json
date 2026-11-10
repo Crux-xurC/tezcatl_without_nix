@@ -1,0 +1,7 @@
+{
+  "doc": "A run_table template (D-run-table) with no rows: run new blank, then o for a row. The seven columns first (id, input -- a code of input_target: t, e, c, x, x2 --, line -- as typed in the input form, ;e for Return --, wait in seconds, auto T / F, status, note), then the variables a line names as {name}. defaults: what a new row gets. keys: over tasks/run_keys.json.",
+  "columns": ["id", "input", "line", "wait", "auto", "status", "note", "arg"],
+  "defaults": { "input": "t", "wait": "", "auto": "T" },
+  "keys": {},
+  "rows": []
+}

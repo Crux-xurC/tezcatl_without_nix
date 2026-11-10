@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<title>Tezcatl — dialogue output</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+</head>
+<body>
+<h1>Tezcatl dialogue output — emacs-vent dialogue bridge, listening side (Emacs → browser)</h1>
+<div id="root"></div>
+
+<script src="../../lib/vent/protocol.js"></script>
+<script src="../../lib/core/text.js"></script>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/ticket.js"></script>
+<script src="../../lib/core/ws.js"></script>
+<script src="../../lib/vent/vent-init.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/vent/dialogue-output-panel.js"></script>
+<script>
+  var panel = Tezcatl.dialogueOutputPanel.mount(document.getElementById('root'));
+
+  Tezcatl.panelFrame.init({
+    role: 'dl-output',
+    name: new URLSearchParams(location.search).get('name') || 'dl-output',
+  });
+
+  Tezcatl.ws.connectFromConfig({
+    onMessage: function (m) { panel.handleMessage(m); },
+    onState: function (s) {
+      panel.setState(s);
+      if (s === 'open') Tezcatl.ventInit.requestContext(Tezcatl.ws.send);
+    },
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "title": "Language servers",
+  "kind": "lsp",
+  "pollMs": 1500,
+  "labels": { "empty": "(no language servers running)" },
+  "hint": "Del: stop  ·  a server starts when an editor pane attaches over /lsp"
+}

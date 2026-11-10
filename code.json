@@ -1,0 +1,14 @@
+{
+  "tabSize": 2,
+  "lineWrapping": false,
+  "keymap": "default",
+  "editorKeymap": "vim",
+  "fontFamily": "heterodox_chess, \"Senobi Gothic\", monospace",
+  "fontSize": 17,
+  "autosave": false,
+  "inputFormEx": "#",
+  "mirror": { "slots": 10, "idleMs": 2000 },
+  "juncture": { "files": 10, "slots": 20 },
+  "lsp": { "timeoutMs": 3000, "maxTimeoutMs": 60000 },
+  "languages": {}
+}

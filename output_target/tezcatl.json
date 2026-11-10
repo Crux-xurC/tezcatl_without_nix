@@ -1,0 +1,5 @@
+{
+  "label": "tezcatl",
+  "desc": "what the frame says: its lines and their answers (the frame's own receiving side). One, always there.",
+  "scripts": ["lib/recv/tezcatl.js"]
+}

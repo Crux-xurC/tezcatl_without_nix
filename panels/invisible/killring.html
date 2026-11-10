@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<title>Tezcatl — killring (invisible)</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<style>
+  
+  body { margin: 0; }
+  #dbg { display: none; font: 11px/1.4 var(--tz-ui-font, monospace); padding: .4em .6em;
+         color: #9c9; white-space: pre-wrap; word-break: break-all; }
+  body.debug #dbg { display: block; }
+</style>
+</head>
+<body>
+<div id="dbg"></div>
+
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/store.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script>
+(function () {
+  'use strict';
+  var bus = Tezcatl.bus;
+  var dbg = document.getElementById('dbg');
+  if (/(?:^|[?&])debug(?:=|&|$)/.test(location.search)) document.body.classList.add('debug');
+
+  Tezcatl.panelFrame.init({ role: 'killring', name: 'killring' });
+
+  var RING_MAX = 60;
+  // kept in ~work/store/killring.json (lib/core/store.js); what is killed
+  // before it is read comes first
+  var KEY = 'tezcatl:killring';
+  var ring = [];
+  Tezcatl.store.load(KEY).then(function (arr) {
+    var kept = Array.isArray(arr) ? arr.filter(function (e) {
+      return e && typeof e.text === 'string';
+    }) : [];
+    var killed = ring.length;
+    var have = {};
+    ring.forEach(function (e) { have[e.text] = true; });
+    ring = ring.concat(kept.filter(function (e) { return !have[e.text]; })).slice(0, RING_MAX);
+    if (killed) save();
+    publish();
+  });
+  function save() { Tezcatl.store.set(KEY, ring); }
+
+  function mkId() {
+    return 'k-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+  }
+
+  function publish() {
+    bus.post('killring.list', { items: ring.slice() });
+    if (document.body.classList.contains('debug')) {
+      dbg.textContent = ring.map(function (e, i) {
+        return i + ': ' + JSON.stringify(e.text.slice(0, 60)) + (e.source ? '  <' + e.source + '>' : '');
+      }).join('\n') || '(empty)';
+    }
+  }
+
+  bus.on('killring.add', function (payload) {
+    var text = payload && typeof payload === 'object' ? payload.text : payload;
+    if (typeof text !== 'string' || !text) return;
+    ring = ring.filter(function (e) { return e.text !== text; });
+    ring.unshift({
+      id: mkId(), text: text,
+      source: (payload && payload.source) || null, ts: Date.now(),
+    });
+    if (ring.length > RING_MAX) ring = ring.slice(0, RING_MAX);
+    save();
+    publish();
+  });
+
+  bus.on('killring.remove', function (payload) {
+    var id = payload && payload.id;
+    if (!id) return;
+    var n = ring.length;
+    ring = ring.filter(function (e) { return e.id !== id; });
+    if (ring.length !== n) { save(); publish(); }
+  });
+
+  bus.on('killring.query', publish);
+
+  publish();
+})();
+</script>
+</body>
+</html>

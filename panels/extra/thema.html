@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — thema</title>
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  /* The thema of a block. What a style (thema/<name>.css, `thema style`) may use
+     -- thema/:
+       #band    the band with the sentence (#text), on the top or bottom (or the side: r / l)
+       #arm     the arm of an L (tl / tr / bl / br) down the side, else hidden
+       #corner  the inner corner where band and arm meet (an L only; hidden here -- a style
+                draws a rounded one, e.g. the elbow of thema/lcars)
+       body     .side-<t|b|r|l|tl|tr|bl|br>, .min-<band|line> (block min), .focused, .style-<name>
+       vars     --th-<colour name>, --th-fg, --th-gap, --th-thickness, --th-color (the band's now),
+                --th-dim (how bright the band is when its block is not focused),
+                --th-inner: the radius (px; two numbers: across and down) of an L's inner
+                corner -- the frame rounds that corner of the panel lying over this page,
+                and #corner shows there
+                --th-arm: the width (px) of an L's arm when it is not the band's thickness
+                (the frame moves the panel by it); --th-armw is that width as a length, set
+                by the page -- for a style to place things by */
+  :root {
+    --th-base: #8a7fb0; --th-info: #6f9fd8; --th-warn: #e0a040; --th-alert: #e06050; --th-calm: #7fb08a;
+    --th-fg: #000; --th-gap: #000; --th-thickness: 24px; --th-color: var(--th-base); --th-inner: 0; --th-arm: 0; --th-dim: .6;
+  }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: var(--th-gap);
+               font: 12px/1 var(--tz-ui-font, monospace); }
+  #band, #arm, #corner { position: absolute; box-sizing: border-box; background: var(--th-color); }
+  /* not focused: the whole band dimmer (not each part translucent: where band and arm
+     overlap they would show brighter) -- --th-dim */
+  body:not(.focused) { filter: brightness(var(--th-dim)); }
+  #band { display: flex; align-items: center; color: var(--th-fg); }
+  #arm, #corner { display: none; }
+  #text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 .8em; }
+  /* one edge */
+  .side-t #band { top: 0; left: 0; right: 0; height: var(--th-thickness); }
+  .side-b #band { bottom: 0; left: 0; right: 0; height: var(--th-thickness); }
+  .side-l #band { top: 0; bottom: 0; left: 0; width: var(--th-thickness); }
+  .side-r #band { top: 0; bottom: 0; right: 0; width: var(--th-thickness); }
+  /* an L: the band across, the arm down the side (square corners here) */
+  .side-tl #band, .side-tr #band { top: 0; left: 0; right: 0; height: var(--th-thickness); }
+  .side-bl #band, .side-br #band { bottom: 0; left: 0; right: 0; height: var(--th-thickness); }
+  .side-tl #arm, .side-tr #arm, .side-bl #arm, .side-br #arm { display: block; top: 0; bottom: 0; width: var(--th-armw, var(--th-thickness)); }
+  .side-tl #arm, .side-bl #arm { left: 0; }
+  .side-tr #arm, .side-br #arm { right: 0; }
+  .side-tl #text, .side-bl #text { padding-left: calc(var(--th-armw, var(--th-thickness)) + .8em); }
+  .side-tr #text, .side-br #text { padding-right: calc(var(--th-armw, var(--th-thickness)) + .8em); }
+  /* the inner corner: under the panel's rounded corner (--th-inner) */
+  .side-tl #corner { left: var(--th-armw, var(--th-thickness)); top: var(--th-thickness); }
+  .side-tr #corner { right: var(--th-armw, var(--th-thickness)); top: var(--th-thickness); }
+  .side-bl #corner { left: var(--th-armw, var(--th-thickness)); bottom: var(--th-thickness); }
+  .side-br #corner { right: var(--th-armw, var(--th-thickness)); bottom: var(--th-thickness); }
+  /* made small (block min): the band is the whole box; a line has no sentence */
+  .min-band #band, .min-line #band { top: 0; left: 0; right: 0; bottom: 0; width: auto; height: auto; }
+  .min-band #arm, .min-line #arm, .min-band #corner, .min-line #corner { display: none; }
+  .min-line #text { display: none; }
+  /* r / l: no sentence (lib/skin/thema.js gives ""). To turn one along the band,
+     a style can set e.g. `.side-l #text { writing-mode: vertical-rl; }`
+     and give the sentence back (thema.show) -- not done here */
+</style>
+<link id="style" rel="stylesheet" href="data:text/css,">
+</head>
+<body class="side-t">
+<div id="band"><span id="text"></span></div>
+<div id="arm"></div>
+<div id="corner"></div>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/skin/thema.js"></script>
+<script src="../../lib/skin/thema-page.js"></script>
+</body>
+</html>

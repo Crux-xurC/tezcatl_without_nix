@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — juncture tree</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; background: #000; color: #ddd; display: flex; flex-direction: column;
+         font: 12px/1.5 var(--tz-ui-font, monospace); }
+  #head { flex: 0 0 auto; display: flex; gap: 1em; align-items: center; padding: 3px 10px;
+          font: 11px/1.6 var(--tz-ui-font, monospace); background: #0a0710; color: #9a7fc0;
+          border-bottom: 1px solid #241a33; white-space: nowrap; overflow: hidden; }
+  #head b { color: #ff9f1c; font-weight: normal; }
+  #list { flex: 1 1 auto; overflow: auto; margin: 0; padding: .3em 0; list-style: none; outline: none;
+          font-family: var(--tz-code-font, monospace); }
+  #list li { padding: 0 .7em; white-space: pre; cursor: default; color: #b9b0c9; }
+  #list li.path { color: #6a5c80; }
+  #list li.current { color: #ffcf7a; }
+  #list li.sel { background: #1b1430; }
+  #list:focus li.sel { background: #2a1f48; }
+  #list .empty { padding: .5em .7em; color: #4d4460; white-space: pre-wrap; }
+  #foot { flex: 0 0 auto; padding: .2em .7em; color: #6a5c80; border-top: 1px solid #241a33;
+          font: 11px/1.5 var(--tz-ui-font, monospace); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #foot.err { color: #ff7a6b; }
+</style>
+</head>
+<body>
+<div id="head"><b>juncture tree</b><span id="path"></span></div>
+<ul id="list" tabindex="0"></ul>
+<div id="foot">j / k: select · Enter: put the point into the code_editor (unsaved) · d: diff with the file on disk · o: open the point · r: read again</div>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/code/code-locate.js"></script>
+<script src="../../lib/code/juncture.js"></script>
+<script src="../../lib/code/juncture-tree-page.js"></script>
+</body>
+</html>

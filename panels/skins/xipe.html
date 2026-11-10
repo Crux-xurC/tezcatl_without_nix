@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<title>Tezcatl — xipe skin</title>
+<style>
+
+  :root {
+    --tzp-border: #333; --tzp-bg: #111; --tzp-focus: #8cb4ff;
+    --tzp-head: #9a7fc0; --tzp-headfg: #ff9f1c; --tzp-headbg: #0a0710;
+    --tzp-split: #222; --tzp-splith: #8cb4ff;
+  }
+  html, body { height: 100%; margin: 0; background: #000; color: #ddd;
+               font: 13px/1.5 var(--tz-ui-font, monospace); }
+  #skin { display: flex; flex-direction: column; height: 100%; }
+  #bar { flex: 0 0 auto; display: flex; gap: 1em; align-items: center;
+         padding: .25em .7em; background: #0a0710; color: #9a7fc0;
+         border-bottom: 1px solid #333; }
+  #bar b { color: #ff9f1c; font-weight: normal; }
+  #bar .hint { color: #6a5c80; }
+  #stage { flex: 1 1 auto; min-height: 0; }
+</style>
+</head>
+<body>
+<div id="skin">
+  <div id="bar">
+    <b>Tezcatl · xipe</b>
+    <span id="status">…</span>
+    <span class="hint">input: Mod-Enter sends · copy from the output → p in the dictionary stores it · Enter in the dictionary puts the word in the input</span>
+  </div>
+  <div id="stage"></div>
+</div>
+<iframe id="cursor" hidden title="cursor aggregator"></iframe>
+<iframe id="killring" hidden title="kill-ring aggregator"></iframe>
+
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/store.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/core/commands.js"></script>
+<script src="../../lib/core/panes.js"></script>
+<script src="../../lib/xipe/xipe-session.js"></script>
+<script src="../../lib/xipe/xipe-transcript.js"></script>
+<script src="../../lib/skin/skin-dict.js"></script>
+<script src="../../lib/skin/recv-refs.js"></script>
+<script src="../../lib/skin/radar.js"></script>
+<script>
+// The Xipe Totec dialogue window. This skin holds the one
+// /xipe connection (lib/xipe/xipe-session.js) for as long as it lives, and its
+// panes talk to it over the bus (the panels/skins/intent.html shape):
+//   code_xipe_in  --xipe.input--> skin --`input` {text}--> Xipe Totec
+//   Xipe Totec --replies, notify/*--> skin --code.set--> code_xipe_out
+//   dict pane (list.html?config=dict&list=<?dict=, default xipe>) --> code_xipe_in
+// ?root= is the xipe.json entry name (default "."). Pane names carry a
+// per-instance suffix so two open skins never answer each other's panes.
+(function () {
+  'use strict';
+  var bus = Tezcatl.bus;
+  var q = new URLSearchParams(location.search);
+  var xipeRoot = q.get('root') || '.';
+  var dictList = q.get('dict') || 'xipe';
+  var statusEl = document.getElementById('status');
+  var T = Tezcatl.xipeTranscript;
+  var MAX_LINES = 5000;
+
+  var sfx = Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5);
+  var IN = 'xipe-in-' + sfx, OUT = 'xipe-out-' + sfx, DICT = 'xipe-dict-' + sfx;
+
+  Tezcatl.panelFrame.init({ role: 'skin', name: 'xipe' });
+  Tezcatl.commands.load().catch(function () {});
+  Tezcatl.commands.listenBus();
+
+  document.getElementById('cursor').src = Tezcatl.config.sibling('panels/invisible/cursor.html');
+  document.getElementById('killring').src = Tezcatl.config.sibling('panels/invisible/killring.html');
+
+  var panes = Tezcatl.panes.mount(
+    document.getElementById('stage'),
+    {
+      dir: 'row',
+      children: [
+        {
+          dir: 'col', size: 3,
+          children: [
+            { panel: 'xipe-out', src: 'panels/resident/code_xipe_out.html', name: OUT, size: 3 },
+            { panel: 'xipe-in',  src: 'panels/resident/code_xipe_in.html',  name: IN,  size: 1 },
+          ],
+        },
+        { panel: 'list', src: 'panels/tool/list.html?config=dict&list=' + encodeURIComponent(dictList), name: DICT, size: 1 },
+      ],
+    },
+    { id: 'xipe' },
+  );
+
+  Tezcatl.skinDict.wire(bus, { dict: DICT, editors: [IN] });
+
+  // -- transcript ------------------------------------------------------------
+  var lines = [];
+  var outId = null;
+
+  function show(more) {
+    lines = T.append(lines, more, MAX_LINES);
+    if (outId) bus.post('code.set', { text: lines.join('\n') + '\n' }, { to: outId });
+  }
+
+  bus.on('code.ready', function (_p, meta) {
+    if (meta && meta.from && meta.from.name === OUT) { outId = meta.from.id; show([]); }
+  });
+
+  // -- connection ----------------------------------------------------------------
+  var session = null;
+  Tezcatl.config.load().then(function (c) {
+    session = Tezcatl.xipeSession.create({
+      url: Tezcatl.xipeSession.relayXipeUrl(c),
+      root: xipeRoot,
+      on: {
+        state: function (s) { statusEl.textContent = s + '  (root ' + xipeRoot + ')'; },
+        // a line whose answer went with the old connection (Xipe Totec restarted) is over, unanswered
+        info: function (i) {
+          show(T.info(i));
+          (i.ids || []).forEach(function (id) { bus.post('xipe.answered', { req: id, ok: false }); });
+        },
+        // said on the bus with the id of the line it answers: with xipe.sent, a pair of work.json
+        reply: function (r) { show(T.reply(r)); bus.post('xipe.answered', { req: r.id, ok: !r.error }); },
+        notify: function (n) { show(T.notify(n)); },
+      },
+    });
+  }).catch(function (e) {
+    statusEl.textContent = 'config: ' + (e && e.message || e);
+  });
+
+  bus.on('xipe.input', function (p, meta) {
+    if (!(meta && meta.from && meta.from.name === IN)) return;
+    var text = p && typeof p.text === 'string' ? p.text : '';
+    if (!session) { show(['# not connected yet']); return; }
+    // "@" alone in a line: the last reference (`radar` in the window of a
+    // table), put there as text -- the line is sent as it then reads, and
+    // what it means is still Xipe Totec's
+    text.split(/\r?\n/).forEach(function (line) {
+      if (!line.trim()) return;
+      sending = sending.then(function () {
+        return Tezcatl.radar.expand(bus, line, Tezcatl.recvRefs.text).then(function (r) {
+          if (r.error) { show(T.sent(line)); show(['# ' + r.error]); return; }
+          show(T.sent(r.line));
+          bus.post('xipe.sent', { req: session.input(r.line) });
+        });
+      });
+    });
+  });
+  var sending = Promise.resolve();
+
+  window.addEventListener('pagehide', function () { if (session) session.close(); });
+
+  bus.on('yield', function () {
+    var ps = panes.panes();
+    if (!ps.length) return;
+    var cur = panes.focusedId();
+    var i = 0;
+    for (var k = 0; k < ps.length; k++) if (ps[k].id === cur) i = k;
+    panes.focus(ps[(i + 1) % ps.length].id);
+  });
+})();
+</script>
+</body>
+</html>

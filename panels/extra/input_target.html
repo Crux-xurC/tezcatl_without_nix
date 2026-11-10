@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — input_target</title>
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  /* Where the lead-key input form of the same skin sends: the destinations
+     there now, one picked (by its letter, or a click), and where its keys land
+     (lib/skin/input-target-page.js; the destinations are input_target/). */
+  :root { --it-bg: #0a0a0a; --it-fg: #ccc; --it-dim: #777; --it-on: #2bd5d5; --it-open: #6f6; --it-wait: #fc6;
+          --it-closed: #f66; }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: var(--it-bg); color: var(--it-fg);
+               font: 12px/1.35 var(--tz-ui-font, monospace); }
+  body { box-sizing: border-box; padding: 4px 6px; outline: none; }
+  #head { color: var(--it-on); font-weight: bold; }
+  #head.gone { color: var(--it-closed); }
+  .row { display: flex; gap: 0.8em; cursor: pointer; white-space: nowrap; }
+  .row.on { background: #12302f; }
+  .code { width: 2.2em; color: var(--it-on); }
+  .label { min-width: 8em; }
+  .state { color: var(--it-dim); min-width: 6em; }
+  .state.open { color: var(--it-open); }
+  .state.connecting { color: var(--it-wait); }
+  .state.closed, .state.no-config { color: var(--it-closed); }
+  .detail { color: var(--it-dim); overflow: hidden; text-overflow: ellipsis; }
+  #where { margin: 3px 0 0; white-space: pre; color: var(--it-dim); font: inherit; }
+  #note { color: var(--it-dim); }
+  #note.err { color: var(--it-closed); }
+</style>
+</head>
+<body tabindex="0">
+<div id="head"></div>
+<div id="list"></div>
+<pre id="where"></pre>
+<div id="note"></div>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/skin/input-target-page.js"></script>
+</body>
+</html>

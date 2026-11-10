@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — xterm (PTY terminal)</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<link rel="stylesheet" href="../../lib/vendor/xterm/xterm.css">
+
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; background: #000; color: #ccc; display: flex; flex-direction: column; }
+  #status { flex: 0 0 auto; margin: 0; padding: 4px 10px; font: 12px/1.5 system-ui, sans-serif; background: #111; border-bottom: 1px solid #333; }
+  #term { flex: 1 1 auto; min-height: 0; padding: 4px 6px; overflow: hidden; }
+  
+</style>
+</head>
+<body>
+<div id="status" class="status connecting">starting…</div>
+<div id="term"></div>
+<script src="../../lib/vendor/xterm/xterm.js"></script>
+<script src="../../lib/vendor/xterm/addon-fit.js"></script>
+<script src="../../lib/vendor/xterm/addon-unicode11.js"></script>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/ticket.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/term/keys.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var Q = new URLSearchParams(location.search);
+  var PANEL_NAME = Q.get('name') || 'xterm';
+
+  var statusEl = document.getElementById('status');
+  var termEl = document.getElementById('term');
+
+  function setStatus(cls, text) {
+    statusEl.className = 'status ' + cls;
+    statusEl.textContent = text;
+  }
+
+  function notice(s) {
+    if (term) term.write('\r\n\x1b[90m' + s + '\x1b[0m\r\n');
+  }
+
+  if (typeof Terminal === 'undefined' ||
+      typeof FitAddon === 'undefined' ||
+      typeof Unicode11Addon === 'undefined') {
+    setStatus('closed', 'could not load xterm.js (../lib/vendor/xterm/).');
+    return;
+  }
+
+  var DEFAULT_FONT =
+    'ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans Mono", monospace';
+  var DEFAULT_SIZE = 14;
+
+  // ?font= overrides config.json ui.terminal.fontFamily for THIS pane only.
+  // A short alias or a literal family string. Pass a monospace family:
+  // xterm.js takes the width of "W" as the cell and letter-spaces every glyph
+  // out to it, so a proportional face (senobi) spreads the whole text once
+  // the cell is re-measured with the font loaded (any resize that changes
+  // cols/rows). The `claude` launcher target therefore passes no ?font=.
+  var FONT_ALIASES = {
+    senobi: '"Senobi Gothic", ' + DEFAULT_FONT,
+    plemol: '"PlemolJP Console", ' + DEFAULT_FONT
+  };
+  function resolveFontQ() {
+    var f = Q.get('font');
+    if (!f || !f.trim()) return null;
+    f = f.trim();
+    return FONT_ALIASES[f.toLowerCase()] || f;
+  }
+  var FONT_Q = resolveFontQ();
+
+  // ?size= overrides config.json ui.terminal.fontSize for THIS pane only
+  // (the `claude` launcher target passes ?size=15 for a slightly larger chat
+  // pane). Clamped to a sane range; a bad value falls through to config/default.
+  function resolveSizeQ() {
+    var s = Number(Q.get('size'));
+    if (!isFinite(s) || s <= 0) return null;
+    return Math.max(8, Math.min(32, s));
+  }
+  var SIZE_Q = resolveSizeQ();
+
+  var term = null;
+  var fit = null;
+  var ws = null;
+  var enc = new TextEncoder();
+
+  var shellCmd = ['bash', '-l'];
+  // ?envpath=<from the FS root>: started in the project around that path, with
+  // its environment and its root as the directory (`env xterm`, D-project-env)
+  var ENV_PATH = Q.get('envpath') || '';
+  var started = false;
+  var ended = false;
+  var lastCols = 0;
+  var lastRows = 0;
+  var fitTimer = null;
+
+  Tezcatl.config.load()
+    .then(function (cfg) { boot(cfg || {}, true); })
+    .catch(function (e) {
+      console.warn('xterm: config.json unavailable', e);
+      boot({}, false);
+    });
+
+  function boot(cfg, cfgOk) {
+    var uiT = (cfg.ui && cfg.ui.terminal) || {};
+    var pty = cfg.pty || {};
+
+    var cmdQ = Q.get('cmd');
+    if (cmdQ && cmdQ.trim()) {
+      shellCmd = cmdQ.trim().split(/\s+/);
+    } else if (Array.isArray(pty.shell) && pty.shell.length &&
+        pty.shell.every(function (s) { return typeof s === 'string'; })) {
+      shellCmd = pty.shell;
+    }
+    var size = Number(uiT.fontSize);
+
+    term = new Terminal({
+      fontFamily: FONT_Q ||
+        (typeof uiT.fontFamily === 'string' && uiT.fontFamily) || DEFAULT_FONT,
+      fontSize: SIZE_Q || (size > 0 ? size : DEFAULT_SIZE),
+      cursorBlink: true,
+      scrollback: 10000,
+      allowProposedApi: true,
+      theme: { background: '#000000' }
+    });
+
+    fit = new FitAddon.FitAddon();
+    term.loadAddon(fit);
+
+    try {
+      term.loadAddon(new Unicode11Addon.Unicode11Addon());
+      term.unicode.activeVersion = '11';
+    } catch (e) {
+      console.warn('xterm: unicode11 addon not active:', e && e.message);
+    }
+
+    term.open(termEl);
+    fit.fit();
+    term.focus();
+
+    // Web fonts (../../lib/core/fonts.css) load async; xterm.js measures the cell on
+    // open with fallback metrics. Re-fit once the real font is in so columns
+    // and the PTY size agree.
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function () {
+        if (term) { try { term.refresh(0, term.rows - 1); } catch (e) {} scheduleFit(); }
+      });
+    }
+
+    if (Tezcatl.panelFrame) {
+      Tezcatl.panelFrame.init({ role: 'xterm', name: PANEL_NAME });
+      Tezcatl.panelFrame.setFocusTarget(termEl);
+      Tezcatl.panelFrame.onInsert(function (text) {
+        if (typeof text !== 'string' || ended) return;
+        term.paste(text);
+        term.focus();
+      });
+    }
+
+    // compile-intent.js (M-x compile) drives this pane by writing whole
+    // lines directly to the PTY's stdin -- deliberately NOT via term.paste(),
+    // which wraps multi-line text in a bracketed paste that most shells
+    // insert as literal text rather than running line by line. Each line
+    // here is typed-and-entered exactly like a real keystroke + Enter.
+    if (Tezcatl.bus) {
+      Tezcatl.bus.onMine('terminal.run', function (payload) {
+        if (ended || !ws || ws.readyState !== WebSocket.OPEN) return;
+        var lines = (payload && payload.lines) || [];
+        lines.forEach(function (line) {
+          if (typeof line === 'string') ws.send(enc.encode(line + '\r'));
+        });
+      });
+    }
+
+    // The lead-key input form's keys (D-lead-key), through its input_target:
+    // terminal.keys {req, events} (to this pane) -> the bytes a terminal sends
+    // for them (lib/term/keys.js; the arrows follow the application cursor
+    // mode the TUI set) -> terminal.keys.sent {req, ok, error} to the sender.
+    // terminal.query {req} -> terminal.here {req, name, connected}.
+    if (Tezcatl.bus) {
+      Tezcatl.bus.onMine('terminal.keys', function (payload, meta) {
+        var req = payload && payload.req;
+        var r;
+        if (ended || !ws || ws.readyState !== WebSocket.OPEN) r = { ok: false, error: 'the terminal is not connected' };
+        else {
+          var enc2 = Tezcatl.termKeys.encode((payload && payload.events) || [],
+            { appCursor: !!(term.modes && term.modes.applicationCursorKeysMode) });
+          if (enc2.error) r = { ok: false, error: enc2.error };
+          else { ws.send(enc.encode(enc2.bytes)); r = { ok: true }; }
+        }
+        Tezcatl.bus.post('terminal.keys.sent', Object.assign({ req: req }, r), { to: meta.from.id });
+      });
+      Tezcatl.bus.on('terminal.query', function (payload, meta) {
+        Tezcatl.bus.post('terminal.here', { req: payload && payload.req, name: PANEL_NAME,
+          connected: !ended && !!ws && ws.readyState === WebSocket.OPEN }, { to: meta.from.id });
+      });
+    }
+
+    termEl.addEventListener('copy', function () {
+      var t = term.getSelection && term.getSelection();
+      if (t && Tezcatl.bus) Tezcatl.bus.post('killring.add', { text: t, source: PANEL_NAME });
+    });
+
+    term.onData(function (d) {
+      if (ended || !ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(enc.encode(d));
+    });
+
+    window.addEventListener('resize', scheduleFit);
+    if (typeof ResizeObserver === 'function') {
+      new ResizeObserver(scheduleFit).observe(termEl);
+    }
+
+    var url = (typeof pty.url === 'string' && pty.url) ? pty.url : null;
+    if (!url) {
+      setStatus('closed',
+        cfgOk ? 'config.json has no pty.url. Cannot connect.'
+              : 'could not read config.json. Cannot connect.');
+      notice(cfgOk ? '[no pty.url in config.json]' : '[config.json unreadable]');
+      return;
+    }
+    connect(url);
+  }
+
+  // the handshake takes a ticket (lib/core/ticket.js, D-poca-secret)
+  function connect(url) {
+    setStatus('connecting', 'connecting ' + url + ' …');
+    Tezcatl.ticket.url(url).then(function (ticketed) { openSocket(ticketed); });
+  }
+
+  function openSocket(url) {
+    ws = new WebSocket(url);
+    ws.binaryType = 'arraybuffer';
+
+    ws.onopen = function () {
+      fit.fit();
+      var d = fit.proposeDimensions() || { cols: term.cols, rows: term.rows };
+      lastCols = d.cols;
+      lastRows = d.rows;
+      var start = { kind: 'start', cmd: shellCmd, cols: d.cols, rows: d.rows };
+      if (ENV_PATH) start.env = { path: ENV_PATH };
+      ws.send(JSON.stringify(start));
+      started = true;
+      setStatus('open', 'connected — ' + shellCmd.join(' ') + '  (' + d.cols + '×' + d.rows + ')' +
+        (ENV_PATH ? ' · the project of ' + ENV_PATH : ''));
+      term.focus();
+    };
+
+    ws.onmessage = function (ev) {
+      if (typeof ev.data === 'string') {
+        handleControl(ev.data);
+      } else {
+        var bytes = new Uint8Array(ev.data);
+        term.write(bytes);
+        // Fed to any xterm_cutoff.html mirror open elsewhere (this-frame or
+        // cross-window via BroadcastChannel); a filter on meta.from.id there
+        // is what makes "since I was opened" true for free -- no marker/
+        // snapshot bookkeeping needed on this side.
+        if (Tezcatl.bus) Tezcatl.bus.post('terminal.data', { bytes: bytes });
+      }
+    };
+
+    ws.onerror = function () {
+      if (!ended) setStatus('closed', 'connection error');
+    };
+
+    ws.onclose = function () {
+      if (ended) return;
+      ended = true;
+      term.options.disableStdin = true;
+      setStatus('closed', 'disconnected — the PTY has ended. Reload for a new one.');
+      notice('[connection closed]');
+    };
+  }
+
+  function handleControl(text) {
+    var msg;
+    try { msg = JSON.parse(text); } catch (e) { return; }
+    if (!msg || typeof msg !== 'object') return;
+
+    if (msg.kind === 'exit') {
+      ended = true;
+      term.options.disableStdin = true;
+      var code = (typeof msg.code === 'number') ? msg.code : '?';
+      setStatus('closed', 'shell exited (code ' + code + '). Reload for a new one.');
+      notice('[process exited with code ' + code + ']');
+      return;
+    }
+
+    // the project's environment (a start with env, D-project-env): said in grey, and in the head
+    if (msg.kind === 'env') {
+      var st = msg.state;
+      if (st === 'fetching') {
+        setStatus('connecting', 'asking for the environment of ' + msg.root + ' (' + msg.marker + ') …');
+        notice('[asking for the project environment: ' + msg.root + ' by ' + msg.marker + ' …]');
+      } else if (st === 'ready') {
+        var n = (msg.pathAdded || []).length;
+        setStatus('open', 'connected — ' + shellCmd.join(' ') + ' · ' + msg.root + ' (' + msg.marker + ')');
+        notice('[project environment: ' + msg.root + ' by ' + msg.marker + ' · PATH +' + n + ' · ' + (msg.set || []).length + ' set]');
+      } else {
+        setStatus('open', 'connected — ' + shellCmd.join(' ') + ' · the relay\'s own environment');
+        notice('[no project environment' + (msg.root ? ' for ' + msg.root : '') + ': ' + (msg.reason || '?') +
+          ' ── the relay\'s own (env show, env reload)]');
+      }
+      return;
+    }
+
+    if (msg.kind === 'error') {
+      ended = true;
+      term.options.disableStdin = true;
+      var reason = (typeof msg.reason === 'string' && msg.reason) ? msg.reason : 'unknown error';
+      setStatus('closed', 'could not start the shell: ' + reason + '. Fix config.json and reload.');
+      notice('[pty did not start: ' + reason + ']');
+      return;
+    }
+  }
+
+  function scheduleFit() {
+    if (fitTimer) clearTimeout(fitTimer);
+    fitTimer = setTimeout(doFit, 120);
+  }
+
+  function doFit() {
+    fitTimer = null;
+    if (!term || !fit) return;
+    fit.fit();
+    var d = fit.proposeDimensions();
+    if (!d || !d.cols || !d.rows) return;
+    if (d.cols === lastCols && d.rows === lastRows) return;
+    lastCols = d.cols;
+    lastRows = d.rows;
+    if (started && !ended && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ kind: 'resize', cols: d.cols, rows: d.rows }));
+    }
+  }
+})();
+</script>
+</body>
+</html>

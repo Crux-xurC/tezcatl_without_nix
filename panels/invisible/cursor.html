@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<title>Tezcatl — cursor (invisible)</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<style>
+  
+  body { margin: 0; }
+  #dbg { display: none; font: 11px/1.4 var(--tz-ui-font, monospace); padding: .4em .6em;
+         color: #9c9; white-space: pre-wrap; word-break: break-all; }
+  body.debug #dbg { display: block; }
+</style>
+</head>
+<body>
+<div id="dbg"></div>
+
+<script src="../../lib/vent/protocol.js"></script>
+<script src="../../lib/core/text.js"></script>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/ticket.js"></script>
+<script src="../../lib/core/ws.js"></script>
+<script src="../../lib/vent/vent-init.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script>
+(function () {
+  'use strict';
+  var bus = Tezcatl.bus;
+  var dbg = document.getElementById('dbg');
+  if (/(?:^|[?&])debug(?:=|&|$)/.test(location.search)) document.body.classList.add('debug');
+
+  Tezcatl.panelFrame.init({ role: 'cursor', name: 'cursor' });
+
+  var HISTORY_MAX = 12;
+
+  var state = {
+    target: null,
+    carets: {},
+    focusHistory: [],
+    previous: null,
+    // the last reference a person made (`radar`): what "@" in an input of any window takes
+    ref: null,
+  };
+
+  function publish() {
+    state.previous =
+      state.focusHistory.length >= 2
+        ? state.focusHistory[state.focusHistory.length - 2]
+        : null;
+    bus.post('cursor.state', state);
+    if (document.body.classList.contains('debug')) {
+      dbg.textContent = JSON.stringify(state, null, 1);
+    }
+  }
+
+  Tezcatl.ws.connectFromConfig({
+    onMessage: function (m) {
+      if (m && m.kind === 'context') {
+        state.target = {
+          'buffer-name': m['buffer-name'],
+          window: m.window,
+          frame: m.frame,
+        };
+        publish();
+      }
+    },
+    onState: function (s) {
+      if (s === 'open') Tezcatl.ventInit.requestContext(Tezcatl.ws.send);
+    },
+  });
+
+  bus.on('cursor', function (info, meta) {
+    var surface =
+      (info && info.surface) ||
+      (meta && meta.from && (meta.from.name || meta.from.role)) ||
+      'unknown';
+    state.carets[surface] = {
+      cell: info && info.cell,
+      pixel: info && info.pixel,
+      selection: info && info.selection,
+      target: info && info.target,
+      // where the panel is, for `radar` (lib/skin/radar.js): a table's rows / columns / type -- no values
+      coord: (info && info.coord) || null,
+      id: (meta && meta.from && meta.from.id) || null,
+      at: Date.now(),
+    };
+    publish();
+  });
+
+  bus.on('focus', function (_payload, meta) {
+    var to = meta && meta.to;
+    if (!to) return;
+    var who =
+      (meta.payload && meta.payload.frame) ||
+      { id: to, role: null, name: null };
+    var last = state.focusHistory[state.focusHistory.length - 1];
+    if (last && last.id === (who.id || to)) return;
+    state.focusHistory.push({
+      id: who.id || to,
+      role: who.role || null,
+      name: who.name || null,
+      at: Date.now(),
+    });
+    if (state.focusHistory.length > HISTORY_MAX) state.focusHistory.shift();
+    publish();
+  });
+
+  bus.on('focus.changed', function (frame) {
+    if (!frame || !frame.id) return;
+    var last = state.focusHistory[state.focusHistory.length - 1];
+    if (last && last.id === frame.id) return;
+    state.focusHistory.push({
+      id: frame.id, role: frame.role || null, name: frame.name || null,
+      at: Date.now(),
+    });
+    if (state.focusHistory.length > HISTORY_MAX) state.focusHistory.shift();
+    publish();
+  });
+
+  bus.on('cursor.ref', function (p) {
+    if (!p || !p.ref) return;
+    state.ref = { ref: p.ref, at: p.at || Date.now() };
+    publish();
+  });
+
+  bus.on('cursor.query', function () { publish(); });
+
+  publish();
+})();
+</script>
+</body>
+</html>

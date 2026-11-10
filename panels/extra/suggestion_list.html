@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — suggestion_list</title>
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  /* The suggestion shell (D-suggestions): the words that can follow the input line,
+     from one source (?config=<id>, suggestion/index.json), in a grid of
+     rows x cols filled top to bottom (lib/skin/suggestion-list-page.js). */
+  :root { --sg-bg: #0a0a0a; --sg-fg: #ccc; --sg-dim: #666; --sg-key: #ff9f1c; --sg-on: #12302f; --sg-onfg: #2bd5d5;
+          --sg-hint: #9a7fc0; --sg-err: #f66; }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: var(--sg-bg); color: var(--sg-fg);
+               font: 12px/1.35 var(--tz-ui-font, monospace); }
+  body { box-sizing: border-box; padding: 3px 4px; outline: none; display: flex; flex-direction: column; }
+  #head { display: flex; gap: .8em; white-space: nowrap; overflow: hidden; }
+  #src { color: var(--sg-onfg); font-weight: bold; }
+  #line { color: var(--sg-fg); overflow: hidden; text-overflow: ellipsis; }
+  #line .partial { text-decoration: underline; }
+  #hints { color: var(--sg-hint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #body { flex: 1; min-height: 0; display: flex; gap: 2px; }
+  .turn { width: 1.4em; display: flex; flex-direction: column; color: var(--sg-dim); text-align: center; }
+  .turn.can { color: var(--sg-key); }
+  #grid { flex: 1; min-width: 0; display: grid; grid-auto-flow: column; align-content: start; gap: 0 6px; }
+  #grid.dim { opacity: .45; }
+  .cell { display: flex; gap: .5em; white-space: nowrap; overflow: hidden; cursor: pointer; padding: 0 2px; }
+  .cell.on { background: var(--sg-on); color: var(--sg-onfg); }
+  .cell .key { color: var(--sg-key); width: 1em; flex: none; }
+  .cell .word { flex: none; }
+  .cell .desc { color: var(--sg-dim); overflow: hidden; text-overflow: ellipsis; }
+  #note { color: var(--sg-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #note.err { color: var(--sg-err); }
+</style>
+</head>
+<body tabindex="0">
+<div id="head"><span id="src"></span><span id="line"></span></div>
+<div id="hints"></div>
+<div id="body">
+  <div class="turn" id="prev"><span>←</span><span>-</span></div>
+  <div id="grid"></div>
+  <div class="turn" id="next"><span>→</span><span>^</span></div>
+</div>
+<div id="note"></div>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/skin/suggest.js"></script>
+<script src="../../lib/skin/suggestion-list-page.js"></script>
+</body>
+</html>

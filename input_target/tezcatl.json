@@ -1,0 +1,5 @@
+{
+  "label": "tezcatl",
+  "desc": "the commands of the skin the input_target is in (the frame's skin …, :e …, :, go on …), run through the skin port. A line of chars only.",
+  "scripts": ["lib/core/lead.js", "lib/target/tezcatl.js"]
+}

@@ -1,0 +1,8 @@
+{
+  "doc": "The sources of the suggestion shell (panels/extra/suggestion_list.html?config=<id>; D-suggestions), in the order shown. letter picks one; label is its name on the dock; scripts are what it loads, its adapter last (lib/suggest/<id>.js, which registers Tezcatl.suggestSources[<id>] and turns the source into {columns, rows}); word and desc are the columns read; anywhere: its words may come at any place of the line (not only after the words before). One shell shows one source: they are never mixed. The launcher lists each as suggestion_list_<id> (list_kinds/panels_and_skins.json). test/suggestion.test.js checks this list against lib/suggest/ and the launcher.",
+  "sources": [
+    { "id": "line",   "letter": "l", "label": "lines",      "scripts": ["lib/suggest/line.js"],   "word": "line", "desc": "desc" },
+    { "id": "intent", "letter": "i", "label": "intents",    "scripts": ["lib/suggest/intent.js"], "word": "line", "desc": "desc" },
+    { "id": "dict",   "letter": "d", "label": "dictionary", "scripts": ["lib/list/dict.js", "lib/suggest/dict.js"], "word": "line", "desc": "desc", "anywhere": true }
+  ]
+}

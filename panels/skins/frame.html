@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<title>Tezcatl — frame</title>
+<style>
+  :root {
+    --fr-border: #333; --fr-focus: #8cb4ff; --fr-head: #9a7fc0; --fr-headfg: #ff9f1c;
+    --fr-headbg: #0a0710; --fr-empty: #3a3048; --fr-err: #ff7a6b;
+  }
+  html, body { height: 100%; margin: 0; background: #000; color: #ddd;
+               font: 13px/1.5 var(--tz-ui-font, monospace); }
+  #skin { display: flex; flex-direction: column; height: 100%; }
+  #bar { flex: 0 0 auto; display: flex; gap: 1em; align-items: center;
+         padding: .25em .7em; background: var(--fr-headbg); color: var(--fr-head);
+         border-bottom: 1px solid var(--fr-border); }
+  #bar b { color: var(--fr-headfg); font-weight: normal; }
+  /* the lines (#stage) and the dock beside them: below (b, the default), left (l), right (r) */
+  #main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  #skin[data-dock="l"] #main { flex-direction: row-reverse; }
+  #skin[data-dock="r"] #main { flex-direction: row; }
+  #stage { flex: 1 1 auto; min-height: 0; min-width: 0; position: relative; }
+  .col { position: absolute; box-sizing: border-box;
+         border: 1px dashed var(--fr-empty); color: var(--fr-empty);
+         display: flex; align-items: center; justify-content: center; }
+  .col.used { border: 0; }
+  .pane { position: absolute; box-sizing: border-box; display: flex; flex-direction: column;
+          border: 1px solid var(--fr-border); background: #111; }
+  .pane.focused { border-color: var(--fr-focus); }
+  .pane .head { flex: 0 0 auto; display: flex; gap: .5em; padding: 0 .5em;
+                font: 11px/1.6 var(--tz-ui-font, monospace); color: var(--fr-head);
+                background: var(--fr-headbg); border-bottom: 1px solid var(--fr-border); cursor: default; }
+  .pane.focused .head { background: #13203a; }
+  .pane .head .what { color: var(--fr-headfg); }
+  .pane iframe { flex: 1 1 auto; border: 0; width: 100%; min-height: 0; background: #000; }
+  /* a block: the thema under the whole box, the panel over it but its band */
+  /* no border of its own: the band shows the focus (thema) */
+  .pane.block { display: block; border: 0; }
+  .pane.block iframe { position: absolute; border: 0; }
+  .pane.block iframe.thema { top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+  .pane.block iframe.main { top: 0; left: 0; width: 100%; height: 100%; }
+  /* a synthesis (D-synthesis): a block whose room holds its panels, placed by its definition */
+  .pane.block .room { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  .pane.block .room iframe.inner { position: absolute; border: 0; box-sizing: border-box;
+                                   border-top: 1px solid var(--fr-border); }
+  .pane.missing { display: flex; align-items: center; justify-content: center; color: #6a5c80; }
+  /* the dock (D-unified-dock, D-dock): one unit of the skin -- its parts and their grid
+     come from docks/<name>.json (lib/skin/frame-dock.js sets the template, the
+     thickness as flex-basis, and each part's grid-area). The lines between the
+     parts are the gap over the border colour. */
+  #dock { flex: 0 0 14em; display: grid; gap: 1px; min-height: 0; min-width: 0;
+          background: var(--fr-border); }
+  #skin[data-dock="b"] #dock { border-top: 1px solid var(--fr-border); }
+  #skin[data-dock="l"] #dock { border-right: 1px solid var(--fr-border); }
+  #skin[data-dock="r"] #dock { border-left: 1px solid var(--fr-border); }
+  #dock > * { min-width: 0; min-height: 0; box-sizing: border-box; background: var(--fr-headbg); }
+  #dock > iframe { width: 100%; height: 100%; border: 0; }
+  /* a part not made yet: its name, dim */
+  #dock > .dock-empty { display: flex; align-items: center; justify-content: center;
+                        color: var(--fr-empty); font: 11px/1.4 var(--tz-ui-font, monospace); }
+  /* the source of the suggestions (@gsel, D-suggestions): the one chosen, the letters */
+  #dock > .dock-gsel { display: flex; gap: .8em; align-items: center; padding: 0 .5em; overflow: hidden; white-space: nowrap;
+                       color: #6a5c80; font: 11px/1.4 var(--tz-ui-font, monospace); outline: none; cursor: pointer; }
+  #dock > .dock-gsel .cur { color: #2bd5d5; }
+  #dock > .dock-gsel .src.on { color: #b9b0cc; }
+  #dock > .dock-gsel:focus { box-shadow: inset 0 0 0 1px var(--fr-focus); }
+  #dock > .dock-gsel:focus .src { color: #ff9f1c; }
+  #form { display: flex; flex-direction: column; gap: .15em; padding: .3em .5em; overflow: hidden; }
+  #form .hint { color: #6a5c80; font-size: 11px; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #form .row { display: flex; gap: .5em; align-items: center; min-width: 0; }
+  #form label { color: var(--fr-headfg); width: 1em; flex: none; }
+  #line { flex: 1 1 auto; min-width: 0; background: #000; color: #eee; border: 1px solid var(--fr-border);
+          font: 13px/1.5 var(--tz-ui-font, monospace); padding: .1em .4em; outline: none; }
+  #line:focus { border-color: var(--fr-focus); }
+  #mark { color: #2bd5d5; width: 2.5em; flex: none; text-align: center; font: 12px var(--tz-ui-font, monospace); }
+  #sends { flex: 1 1 auto; min-width: 0; color: #b9b0cc; font: 12px/1.4 var(--tz-ui-font, monospace);
+           white-space: pre; overflow: hidden; text-overflow: ellipsis; padding: 0 .4em; }
+  #sends .mod { color: #ff9a3c; }
+  #sends.bad .err { color: var(--fr-err); }
+  #sends.bad .at { color: #6a5c80; }
+  #sends.waiting .wait { color: #2bd5d5; }
+  #lnote { color: #6a5c80; font: 11px/1.4 var(--tz-ui-font, monospace); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+  #lnote.err { color: var(--fr-err); }
+  #lnote.ok { color: #6c6; }
+  #recv { margin: 0; padding: .3em .7em; overflow: auto;
+          color: #b9b0cc; font: 12px/1.45 var(--tz-ui-font, monospace); white-space: pre-wrap; }
+  /* another source's record over the receiving side (output_target, D-unified-dock) */
+  #recvx { margin: 0; padding: .3em .7em; overflow: auto;
+           color: #b9b0cc; font: 12px/1.45 var(--tz-ui-font, monospace); white-space: pre-wrap; }
+  #dock:not(.recv-other) > #recvx, #dock.recv-other > #recv { display: none !important; }
+  #recvx .whose { color: #6a5c80; }
+  #recvx .err { color: var(--fr-err); }
+  #recvx .sent { color: #ff9f1c; }
+  #recv .sent { color: #ff9f1c; }
+  #recv .err { color: var(--fr-err); }
+  /* what the line points at (go on goes to the last one) */
+  #recv .ref { color: var(--fr-focus); }
+</style>
+</head>
+<body>
+<div id="skin" data-dock="b">
+  <div id="bar">
+    <b>Tezcatl · frame</b>
+    <span id="what"></span>
+    <span id="at"></span>
+  </div>
+  <div id="main">
+    <div id="stage"></div>
+    <div id="dock">
+      <div id="form">
+        <div class="hint">: alone: to the map · ;i: where it sends (a letter picks) · ;g: the suggestions' source · ;o: where the receiving side reads · Shift+arrows: to the next part · ;cx C-x · ;h;j;k;l arrows · ;e Return · ;q Esc · ;; a ; · Enter / Esc on an empty line: to the focused panel · Alt+p/n: earlier lines · Esc Esc in a panel: back here</div>
+        <div class="row"><label for="line">&gt;</label><input id="line" autocomplete="off" spellcheck="false"
+          placeholder="skin add 1 tree · skin main 1,2,1 · skin focus 2 1 · : · go on · skin save"><span id="mark"></span></div>
+        <div class="row"><label></label><div id="sends" class="sends"></div></div>
+        <div id="lnote"></div>
+      </div>
+      <pre id="recv"></pre>
+      <pre id="recvx"></pre>
+    </div>
+  </div>
+</div>
+<iframe id="cursor" hidden title="cursor aggregator"></iframe>
+<iframe id="killring" hidden title="kill-ring aggregator"></iframe>
+<iframe id="work" hidden title="work store"></iframe>
+
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/store.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/core/commands.js"></script>
+<script src="../../lib/core/open-page.js"></script>
+<script src="../../lib/core/lead.js"></script>
+<script src="../../lib/skin/lead-form.js"></script>
+<script src="../../lib/code/code-files.js"></script>
+<script src="../../lib/skin/skin-ex.js"></script>
+<script src="../../lib/code/code-locate.js"></script>
+<script src="../../lib/code/code-diff.js"></script>
+<script src="../../lib/code/juncture.js"></script>
+<script src="../../lib/code/markdown.js"></script>
+<script src="../../lib/skin/frame-layout.js"></script>
+<script src="../../lib/skin/synthesis.js"></script>
+<script src="../../lib/skin/dock-layout.js"></script>
+<script src="../../lib/skin/recv-refs.js"></script>
+<script src="../../lib/skin/radar.js"></script>
+<script src="../../lib/skin/thema.js"></script>
+<script src="../../lib/view/color.js"></script>
+<script src="../../lib/skin/lsp-commands.js"></script>
+<script src="../../lib/skin/check-commands.js"></script>
+<script src="../../lib/skin/juncture-commands.js"></script>
+<script src="../../lib/skin/markdown-commands.js"></script>
+<script src="../../lib/view/image.js"></script>
+<script src="../../lib/skin/image-commands.js"></script>
+<script src="../../lib/skin/task-table-commands.js"></script>
+<script src="../../lib/skin/intent-commands.js"></script>
+<script src="../../lib/skin/run-table-commands.js"></script>
+<script src="../../lib/skin/log-commands.js"></script>
+<script src="../../lib/skin/env-commands.js"></script>
+<script src="../../lib/skin/db-commands.js"></script>
+<script src="../../lib/core/work-log.js"></script>
+<script src="../../lib/skin/work-commands.js"></script>
+<script src="../../lib/skin/frame-code.js"></script>
+<script src="../../lib/skin/frame-store.js"></script>
+<script src="../../lib/skin/frame-render.js"></script>
+<script src="../../lib/skin/frame-focus.js"></script>
+<script src="../../lib/skin/frame-lines.js"></script>
+<script src="../../lib/skin/frame-dock.js"></script>
+<script src="../../lib/skin/frame-page.js"></script>
+</body>
+</html>

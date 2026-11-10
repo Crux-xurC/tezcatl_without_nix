@@ -1,0 +1,9 @@
+{
+  "title": "Slots",
+  "kind": "slots",
+  "dataFile": "tree.json",
+  "pollMs": 1000,
+  "labels": { "empty": "(no slots)" },
+  "hint": "Enter: open in tree · Del: delete · M-k / M-j: up / down · M-a: add the filter's path · M-t: tag with the filter's text",
+  "keys": { "M-a": "add", "M-t": "tag", "M-k": "up", "M-j": "down" }
+}

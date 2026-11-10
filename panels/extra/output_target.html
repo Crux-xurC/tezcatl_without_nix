@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — output_target</title>
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  /* Where the receiving side of the same skin takes its lines from: the
+     sources there now, one picked (by its letter, or a click), and the one
+     shown now -- the input's destination while the keyboard is in the input
+     form (lib/skin/output-target-page.js; the sources are output_target/). */
+  :root { --ot-bg: #0a0a0a; --ot-fg: #ccc; --ot-dim: #777; --ot-on: #ff9f1c; --ot-open: #6f6; --ot-wait: #fc6;
+          --ot-closed: #f66; }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: var(--ot-bg); color: var(--ot-fg);
+               font: 12px/1.35 var(--tz-ui-font, monospace); }
+  body { box-sizing: border-box; padding: 4px 6px; outline: none; display: flex; flex-direction: column; }
+  #head { flex: none; color: var(--ot-on); font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #head .follow { color: var(--ot-dim); font-weight: normal; }
+  #list { flex: 0 1 auto; min-height: 0; overflow: auto; scrollbar-width: none; }
+  .row { display: flex; gap: 0.8em; cursor: pointer; white-space: nowrap; }
+  .row.on { background: #2e2310; }
+  .row.shown .label { text-decoration: underline; }
+  .code { width: 2.2em; color: var(--ot-on); flex: none; }
+  .label { min-width: 7em; flex: none; }
+  .state { color: var(--ot-dim); min-width: 6em; flex: none; }
+  .state.open { color: var(--ot-open); }
+  .state.connecting { color: var(--ot-wait); }
+  .state.closed, .state.no-config { color: var(--ot-closed); }
+  .detail { color: var(--ot-dim); overflow: hidden; text-overflow: ellipsis; }
+  #lines { flex: 1; min-height: 0; margin: 3px 0 0; overflow: auto; white-space: pre; color: var(--ot-dim); font: inherit; }
+  #note { flex: none; color: var(--ot-dim); }
+  #note.err { color: var(--ot-closed); }
+</style>
+</head>
+<body tabindex="0">
+<div id="head"></div>
+<div id="list"></div>
+<div id="note"></div>
+<pre id="lines"></pre>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/skin/output-target-page.js"></script>
+</body>
+</html>

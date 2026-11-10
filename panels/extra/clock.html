@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — clock</title>
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  /* the time, fitted to the box (lib/view/clock-page.js); the date under it */
+  :root { --ck-bg: #0a0710; --ck-fg: #ff9f1c; --ck-sub: #6a5c80; }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: var(--ck-bg); }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center;
+         font-family: var(--tz-ui-font, monospace); }
+  #time { color: var(--ck-fg); line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  #date { color: var(--ck-sub); font-size: 11px; line-height: 1.4; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="time"></div>
+<div id="date"></div>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/view/clock-page.js"></script>
+</body>
+</html>

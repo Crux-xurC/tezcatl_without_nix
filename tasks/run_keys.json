@@ -1,0 +1,7 @@
+{
+  "doc": "The run_table's keys (D-run-table), under every template: a status, and the prefixes a line of the output begins with to be that status. Nothing is read beyond the prefix -- what counts as a failure is what is written here. A template's keys lie over these (\"\" or [] takes one out). wait: the seconds a row waits when its wait is empty; no key in the wait is `done`. The runner's own statuses (sent, done, send-failed, skip, stop) are not keys. A row whose auto is F is skipped when a row of a smaller id has a key's status or send-failed.",
+  "wait": 3,
+  "keys": {
+    "err": ["! "]
+  }
+}

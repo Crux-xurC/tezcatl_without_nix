@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — code_cmd_in (command line)</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; background: #000; color: #ddd; display: flex;
+         flex-direction: column; font-family: var(--tz-ui-font, monospace); }
+  #head { flex: 0 0 auto; display: flex; gap: 1em; align-items: center;
+          padding: 3px 10px; font: 11px/1.6 var(--tz-ui-font, monospace);
+          background: #0a0710; color: #9a7fc0; border-bottom: 1px solid #241a33; }
+  #head b { color: #ff9f1c; font-weight: normal; }
+  #head .hint { color: #6a5c80; }
+  #editor { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+  .cm-editor { height: 100%; }
+  .cm-editor.cm-focused { outline: none; }
+  .cm-scroller { overflow: auto; }
+</style>
+</head>
+<body>
+<div id="head">
+  <b id="name">code_cmd_in</b>
+  <span id="lang">cmd</span>
+  <span id="hint" class="hint">Mod-Enter: send (one per line)</span>
+  <span id="msg" class="hint"></span>
+</div>
+<div id="editor"></div>
+
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/ticket.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/code/code-languages.js"></script>
+<script type="module">
+// A skin's command line. Mod-Enter posts cmd.input {text} (the buffer as
+// typed) to the skin, which reads each line as one of its own commands (the
+// tree skin's `tree ...`). Nothing here knows the commands; the same shape as
+// code_xipe_in, which posts xipe.input for a backend instead.
+//   ?lang=<id>     its highlighting (a database window: mariadb)
+//   ?keep=1        the text stays after sending (a statement edited and sent again) ...
+//   ?clear=<word>  ... but a text whose first word is this one is emptied (db login …)
+//   ?hint=<text>   what the head says instead of "Mod-Enter: send (one per line)"
+import { keymap, Prec } from "../../lib/vendor/codemirror/cm.bundle.js";
+import { createCodeEditor } from "../../lib/code/code-editor.js";
+
+const bus = window.Tezcatl && window.Tezcatl.bus;
+const q = new URLSearchParams(location.search);
+const KEEP = q.get("keep") === "1";
+const CLEAR = q.get("clear");
+if (q.get("hint")) document.getElementById("hint").textContent = q.get("hint");
+let ed = null;
+
+function send() {
+  const text = ed.getText();
+  if (!text.trim()) return true;
+  if (bus) bus.post("cmd.input", { text });
+  if (!KEEP || (CLEAR && text.trim().split(/\s+/)[0] === CLEAR)) ed.setDoc("");
+  ed.flash("sent");
+  return true;
+}
+
+ed = createCodeEditor({
+  editable: true,
+  role: "cmd-in",
+  surface: "cmd-in",
+  name: "code_cmd_in",
+  // the head says the language only when one is asked (?lang=); else "cmd"
+  head: q.get("lang") ? { msg: document.getElementById("msg"), lang: document.getElementById("lang") } : { msg: document.getElementById("msg") },
+  extraExtensions: [Prec.highest(keymap.of([{ key: "Mod-Enter", preventDefault: true, run: send }]))],
+});
+document.getElementById("name").textContent = ed.name;
+</script>
+</body>
+</html>

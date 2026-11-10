@@ -1,0 +1,29 @@
+{
+  "connections": [
+    { "name": "emacs", "url": "ws://127.0.0.1:4100/", "dialect": "emacs" }
+  ],
+  "pty": {
+    "url": "ws://127.0.0.1:4100/pty",
+    "shell": ["bash", "-l"]
+  },
+  "launcher": {
+    "open-mode": "tab",
+    "window-name": "tezcatl-{n}",
+    "window-features": "width=1200,height=800"
+  },
+  "ui": {
+    "terminal": {
+      "fontFamily": "PlemolJP Console, monospace",
+      "fontSize": 14
+    },
+    "keys": {
+      "leave": ["Escape", "Escape"],
+      "killring": ["Escape", "y"],
+      "leaveTimeoutMs": 400
+    },
+    "startup": {
+      "clipboardMirror": true,
+      "windows": []
+    }
+  }
+}

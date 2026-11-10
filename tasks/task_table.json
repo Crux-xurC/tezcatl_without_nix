@@ -1,0 +1,8 @@
+{
+  "doc": "The task_table panel (D-task-table): what a note's table needs to be taken in, and what the panel puts in. columns: the labels of the four columns a table must have -- no (the row's place, t-02-01), state, task, key (the row's id: the mark until saved, then an id of the relay's list `list`, never edited once set). prefix: the letter of the no column. states: the first is what a new row gets. Other columns of the table are carried as they are.",
+  "columns": { "no": "id", "state": "state", "task": "task", "key": "inner_id" },
+  "mark": "#eigenvalue",
+  "list": "tasks",
+  "prefix": "t",
+  "states": ["TODO", "NEXT", "DONE", "CANCELLED"]
+}

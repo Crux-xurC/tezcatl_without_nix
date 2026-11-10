@@ -1,0 +1,8 @@
+{
+  "label": "emacs-vent",
+  "desc": "Emacs through emacs-vent (kind:\"input\", the relay's connection of config.json). One, always there.",
+  "scripts": [
+    "lib/vent/protocol.js", "lib/core/text.js", "lib/vent/middleware.js", "lib/core/ticket.js", "lib/core/ws.js",
+    "lib/vent/vent-init.js", "lib/target/emacs-vent.js"
+  ]
+}

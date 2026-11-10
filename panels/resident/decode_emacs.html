@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — decode emacs</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; background: #000; color: #ddd; display: flex; flex-direction: column;
+         font-family: var(--tz-ui-font, monospace); }
+  #head { flex: 0 0 auto; display: flex; gap: 1em; align-items: center; padding: 3px 10px;
+          font: 11px/1.6 var(--tz-ui-font, monospace); background: #0a0710; color: #9a7fc0;
+          border-bottom: 1px solid #241a33; white-space: nowrap; overflow: hidden; }
+  #head b { color: #ff9f1c; font-weight: normal; }
+  #grid-wrap { flex: 1 1 auto; min-height: 0; overflow: auto; outline: none; }
+  #grid-wrap .empty { padding: 1em; color: #6a5c80; white-space: pre-wrap; }
+  table.mx-grid { border-collapse: collapse; width: 100%; font: 12px/1.5 var(--tz-ui-font, monospace); }
+  table.mx-grid thead th { position: sticky; top: 0; background: #0a0710; color: #ff9f1c;
+    text-align: left; padding: 2px 8px; border-bottom: 1px solid #333; cursor: pointer; z-index: 1; }
+  table.mx-grid td { padding: 2px 8px; border-bottom: 1px solid #161122; white-space: nowrap;
+    max-width: 40em; overflow: hidden; text-overflow: ellipsis; }
+  table.mx-grid td.mx-gutter { color: #6a5c80; text-align: right; user-select: none; background: #0a0710; }
+  table.mx-grid td.mx-cursor { outline: 1px solid #ff9f1c; outline-offset: -1px; }
+  table.mx-grid td.mx-selected { background: #1a1428; }
+  table.mx-grid td[data-color="b"] { background: #2b4a7a; color: #eaf1ff; }
+  table.mx-grid td[data-color="r"] { background: #7a2b2b; color: #ffecec; }
+  table.mx-grid td[data-color="y"] { background: #7a6b1f; color: #fffbe0; }
+  table.mx-grid tr.mx-filter-row input { font: inherit; background: #000; color: #ffcc99; border: 1px solid #444; padding: 1px 4px; }
+  #foot { flex: 0 0 auto; padding: .2em .7em; color: #6a5c80; border-top: 1px solid #241a33;
+          font: 11px/1.5 var(--tz-ui-font, monospace); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #foot.err { color: #ff7a6b; }
+</style>
+</head>
+<body>
+<div id="head"><b>decode emacs</b><span id="intent"></span><span id="when"></span></div>
+<div id="grid-wrap" tabindex="0"></div>
+<div id="foot">an intent with a table (its result.table) answers here ── Enter: the file of the row · r: ask again · the intent's keys · hjkl v / c y: as a matrix</div>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/core/keymap.js"></script>
+<script src="../../lib/core/commands.js"></script>
+<script src="../../lib/xipe/matrix-data.js"></script>
+<script src="../../lib/xipe/matrix-render.js"></script>
+<script src="../../lib/xipe/matrix-grid.js"></script>
+<script src="../../lib/xipe/xipe-place.js"></script>
+<script src="../../lib/code/code-locate.js"></script>
+<script src="../../lib/vent/decode-table.js"></script>
+<script src="../../lib/vent/decode-emacs-page.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "title": "problems",
+  "kind": "problems",
+  "pollMs": 1500,
+  "hint": "the diagnostics of the code_editor open now (E error, W warning) ── Enter goes to the place. Files not open are not listed (build for the whole)",
+  "labels": { "empty": "(the open code_editor have no diagnostics)" }
+}

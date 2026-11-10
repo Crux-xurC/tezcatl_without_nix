@@ -1,0 +1,8 @@
+{
+  "label": "frame",
+  "desc": "another frame (another tab or window): what it says, its lines and their answers (recv.out), from when the list was opened -- the receiving side of a dock that sends to it (D-bridge). One per frame open but this one.",
+  "scripts": [
+    "lib/target/frame.js",
+    "lib/recv/frame.js"
+  ]
+}

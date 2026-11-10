@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — virtual_keyboard</title>
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  /* A US tenkeyless keyboard drawn as ASCII. The keys the input form sends
+     light up in five shades, newest first, and step down every two seconds
+     (lib/skin/virtual-keyboard-page.js). The font size is fitted to the panel; the face is the terminal's
+     monospaced one, since ASCII art needs exact cell widths (lib/core/fonts.css). */
+  :root {
+    --vk-bg: #000; --vk-fg: #2bd5d5; --vk-lit-fg: #000;
+    --vk-font: "PlemolJP Console", monospace;
+    --vk-0: #d56a00; --vk-1: #ff8000; --vk-2: #ff952b; --vk-3: #ffaa55; --vk-4: #ffbf80;
+  }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: var(--vk-bg); }
+  body { display: flex; align-items: center; justify-content: center; }
+  #kb { margin: 0; color: var(--vk-fg); font-family: var(--vk-font); line-height: 1.2; white-space: pre; }
+  #kb span[data-shade] { color: var(--vk-lit-fg); }
+  #kb span[data-shade="0"] { background: var(--vk-0); }
+  #kb span[data-shade="1"] { background: var(--vk-1); }
+  #kb span[data-shade="2"] { background: var(--vk-2); }
+  #kb span[data-shade="3"] { background: var(--vk-3); }
+  #kb span[data-shade="4"] { background: var(--vk-4); }
+</style>
+</head>
+<body>
+<pre id="kb"></pre>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/core/virtual-keyboard.js"></script>
+<script src="../../lib/skin/virtual-keyboard-page.js"></script>
+</body>
+</html>

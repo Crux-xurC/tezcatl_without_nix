@@ -1,0 +1,25 @@
+{
+  "doc": "The destinations of the lead-key input form (panels/extra/input_target.html; D-lead-key). In the order shown; letter is what selects one (with a number after it when the skin has more than one of it). Each id has input_target/<id>.json. test/input-target-dir.test.js checks this list against the directory.",
+  "targets": [
+    {
+      "id": "tezcatl",
+      "letter": "t"
+    },
+    {
+      "id": "emacs-vent",
+      "letter": "e"
+    },
+    {
+      "id": "code_editor",
+      "letter": "c"
+    },
+    {
+      "id": "xterm",
+      "letter": "x"
+    },
+    {
+      "id": "frame",
+      "letter": "f"
+    }
+  ]
+}

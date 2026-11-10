@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — code_diff</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  html, body { height: 100%; margin: 0; background: #000; color: #ddd; }
+  body { display: flex; flex-direction: column; font: 12px/1.5 var(--tz-ui-font, monospace); }
+  #head { flex: 0 0 auto; display: flex; align-items: center; font: 11px/1.6 var(--tz-ui-font, monospace);
+          background: #0a0710; color: #9a7fc0; border-bottom: 1px solid #241a33; }
+  #head span { flex: 1 1 50%; min-width: 0; padding: 3px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #head #hb { border-left: 1px solid #241a33; }
+  #view { flex: 1 1 auto; min-height: 0; overflow: auto; outline: none; }
+  #view .empty { padding: 1em; color: #6a5c80; }
+  #view .cm-mergeView { height: 100%; }
+  #view .cm-mergeViewEditors { min-height: 100%; }
+  #foot { flex: 0 0 auto; padding: .2em .7em; color: #6a5c80; border-top: 1px solid #241a33;
+          font: 11px/1.5 var(--tz-ui-font, monospace); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #foot.err { color: #ff7a6b; }
+</style>
+</head>
+<body>
+<div id="head"><span id="ha"></span><span id="hb"></span></div>
+<div id="view" tabindex="0"></div>
+<div id="foot">two saved files side by side, read only ── n / p: next / previous change · j / k: scroll · r: read both again</div>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/code/code-languages.js"></script>
+<script src="../../lib/code/code-diff.js"></script>
+<script type="module" src="../../lib/code/code-diff-page.js"></script>
+</body>
+</html>

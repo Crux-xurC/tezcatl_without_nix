@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<title>Tezcatl — tree (file tree)</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+
+<style>
+  body { margin: 0; display: flex; flex-direction: column; height: 100vh;
+         background: #000; color: #ffcc66; font: 12px/1.6 var(--tz-ui-font, monospace); }
+  #head { flex: 0 0 auto; padding: .3em .6em; border-bottom: 1px solid #241a33;
+          background: #0a0710; color: #9a7fc0; }
+  #head .title { color: #ff9f1c; }
+  #head .msg { color: #6a5c80; margin-left: 1em; }
+  #tree { flex: 1 1 auto; overflow: auto; padding: .3em 0; outline: none; }
+  .row { padding: .05em .6em; white-space: pre; cursor: pointer; }
+  .row.sel { background: #241a33; color: #ff9f1c; }
+  .row .tw { color: #7a5f9a; }
+  .row.dir .nm { color: #cc99cc; }
+  .row.rootrow .nm { color: #ff9f1c; }
+  .row.rootrow { border-top: 1px solid #1c1428; }
+  .row.rootrow:first-child { border-top: 0; }
+  .row .sz { color: #4a3f5c; }
+  .row .bm { color: #ffcc33; }             
+  #foot { flex: 0 0 auto; padding: .2em .6em; border-top: 1px solid #241a33;
+          color: #6a5c80; font-size: 11px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div id="head">
+  <span class="title" id="title">tree</span>
+  <span class="msg" id="msg"></span>
+</div>
+<div id="tree" tabindex="0"></div>
+<div id="foot">↑↓ select · → / Enter open/expand (in a skin: its code_editor; alone: a new window) · ← close · o open in a new window · m bookmark</div>
+
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/store.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script>
+(function () {
+  'use strict';
+  var bus = Tezcatl.bus;
+  var params = new URLSearchParams(location.search);
+  var NAME = params.get('name') || 'tree';
+  var treeEl = document.getElementById('tree');
+  var msgEl = document.getElementById('msg');
+  var footEl = document.getElementById('foot');
+  var FOOT = footEl.textContent;
+  document.getElementById('title').textContent = 'tree';
+
+  Tezcatl.panelFrame.init({ role: 'tree', name: NAME });
+  Tezcatl.panelFrame.setFocusTarget(treeEl);
+
+  var fsBase = null;
+  // The tree shows one root, a path relative to TEZCATL_FS_ROOT ("" = the FS
+  // root itself, the default). Which root is chosen elsewhere -- the slots
+  // list (list.html?config=slots) posts tree.root {path, tag, tree} -- so this
+  // panel only shows the tree and holds what is selected in it (tree.selection).
+  // `roots` stays a list: the row and reveal code handles several, and a skin
+  // could hand over more than one later.
+  var roots = [{ label: '/', path: '', dir: true, open: true, isRoot: true,
+                 children: null, loading: false }];
+  var rows = [];
+  var sel = 0;
+  var winSeq = 0;
+  var pending = {};
+
+  // the bookmarks: ~work/store/bookmarks.json (lib/core/store.js), shared
+  // with the list kind "bookmarks"
+  var BM_KEY = 'tezcatl:bookmarks';
+  var bmPaths = Object.create(null);
+  function bmList(a) { return Array.isArray(a) ? a : []; }
+  function bmSet(a) {
+    var s = Object.create(null);
+    bmList(a).forEach(function (b) { if (b && b.path) s[b.path] = true; });
+    return s;
+  }
+  function bmLoad() {
+    return Tezcatl.store.load(BM_KEY).then(function (a) { bmPaths = bmSet(a); render(); });
+  }
+  bmLoad();
+  function bmToggle(node) {
+    var said = '';
+    Tezcatl.store.update(BM_KEY, function (a) {
+      a = bmList(a).slice();
+      var i = -1;
+      for (var k = 0; k < a.length; k++) if (a[k] && a[k].path === node.path) { i = k; break; }
+      if (i >= 0) { a.splice(i, 1); said = 'bookmark removed ' + node.path; }
+      else {
+        a.push({ id: 'b-' + Date.now().toString(36), path: node.path,
+                 dir: !!node.dir, name: node.name, ts: Date.now() });
+        said = 'bookmark added ' + node.path;
+      }
+      return a;
+    }).then(function (w) {
+      flash(w.ok ? said : 'bookmark not kept ── ' + w.message);
+      bmPaths = bmSet(w.value);
+      bus.post('bookmark.changed', {});
+      render();
+    });
+  }
+
+  function normRootPath(p) {
+    if (typeof p !== 'string') return '';
+    return p.replace(/^\/+/, '')
+            .split('/')
+            .filter(function (s) { return s && s !== '.' && s !== '..'; })
+            .join('/');
+  }
+
+  var ready = Tezcatl.config.load().then(function (c) {
+    var u = (c && c.connections && c.connections[0] && c.connections[0].url) || null;
+    fsBase = deriveHttp(u);
+    if (!fsBase) { footEl.textContent = 'config.json has no relay URL'; return; }
+    return load(roots[0]).then(render);
+  }).catch(function () {
+    footEl.textContent = 'could not read config.json';
+  });
+
+  function deriveHttp(u) {
+    if (typeof u !== 'string') return null;
+    try {
+      var x = new URL(u);
+      x.protocol = x.protocol === 'wss:' ? 'https:' : 'http:';
+      return x.protocol + '//' + x.host;
+    } catch (_) { return null; }
+  }
+
+  function fsUrl(p, read) {
+    return fsBase + (read ? '/fs/read' : '/fs') + '?path=' + encodeURIComponent(p || '');
+  }
+
+  function load(node) {
+    if (node.children || node.loading) return Promise.resolve();
+    node.loading = true;
+    return fetch(fsUrl(node.path, false), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+      .then(function (doc) {
+        node.children = (doc.entries || []).map(function (e) {
+          return {
+            name: e.name,
+            path: node.path ? node.path + '/' + e.name : e.name,
+            dir: !!e.dir,
+            size: e.size || 0,
+            open: false,
+            children: null,
+            loading: false,
+          };
+        });
+        node.loading = false;
+      })
+      .catch(function (e) {
+        node.loading = false;
+        footEl.textContent = 'load failed: ' + (e && e.message || e);
+      });
+  }
+
+  function flatten(node, depth, out) {
+    (node.children || []).forEach(function (ch) {
+      out.push({ node: ch, depth: depth });
+      if (ch.dir && ch.open) flatten(ch, depth + 1, out);
+    });
+  }
+
+  function flattenAll(out) {
+    roots.forEach(function (rt) {
+      out.push({ node: rt, depth: 0, root: true });
+      if (rt.dir && rt.open) flatten(rt, 1, out);
+    });
+  }
+
+  function render() {
+    rows = [];
+    flattenAll(rows);
+    if (sel >= rows.length) sel = Math.max(0, rows.length - 1);
+    treeEl.textContent = '';
+    rows.forEach(function (r, i) {
+      var n = r.node;
+      var div = document.createElement('div');
+      div.className = 'row' + (n.dir ? ' dir' : '') + (i === sel ? ' sel' : '') +
+        (r.root ? ' rootrow' : '');
+      var indent = new Array(r.depth + 1).join('  ');
+      var tw = n.dir ? (n.open ? '▾ ' : '▸ ') : '  ';
+      div.appendChild(span('tw', indent + tw));
+      div.appendChild(span('nm', n.name || n.label || '/'));
+      if (n.path && bmPaths[n.path]) div.appendChild(span('bm', ' ★'));
+      if (!n.dir) div.appendChild(span('sz', '  ' + n.size));
+      div.addEventListener('click', function () { sel = i; render(); activate(); });
+      treeEl.appendChild(div);
+    });
+    var s = treeEl.children[sel];
+    if (s && s.scrollIntoView) s.scrollIntoView({ block: 'nearest' });
+    announceSelection();
+  }
+
+  // the selected row's path, for whoever acts on it (a skin's commands):
+  // tree.selection {name, path, dir}, posted when it changes
+  var lastSel = null;
+  function announceSelection() {
+    var r = rows[sel];
+    var cur = r ? { name: NAME, path: r.node.path || '', dir: !!r.node.dir } : null;
+    var key = cur ? cur.path + '|' + cur.dir : '';
+    if (key === lastSel) return;
+    lastSel = key;
+    if (cur) bus.post('tree.selection', cur);
+  }
+
+  function span(cls, text) {
+    var s = document.createElement('span');
+    s.className = cls; s.textContent = text;
+    return s;
+  }
+
+  function flash(t) {
+    msgEl.textContent = t;
+    setTimeout(function () { if (msgEl.textContent === t) msgEl.textContent = ''; }, 1600);
+  }
+
+  function activate() {
+    var r = rows[sel];
+    if (!r) return;
+    var n = r.node;
+    if (n.dir) {
+      if (!n.open) { n.open = true; load(n).then(render); }
+      else { n.open = false; render(); }
+    } else if (Tezcatl.skinPort.inSkin(window)) {
+      // inside a skin: the skin opens it in its own code_editor
+      bus.post('code.open', { path: n.path });
+      flash('code.open ' + n.path);
+    } else {
+      // on its own: nobody to hand it to -- a new code_editor window, as `o`
+      openWindow();
+    }
+  }
+
+  function collapse() {
+    var r = rows[sel];
+    if (!r) return;
+    var n = r.node;
+    if (n.dir && n.open) { n.open = false; render(); return; }
+    for (var i = sel - 1; i >= 0; i--) {
+      if (rows[i].depth < r.depth) { sel = i; render(); return; }
+    }
+  }
+
+  function openWindow() {
+    var r = rows[sel];
+    if (!r || r.node.dir) return;
+    var path = r.node.path;
+    winSeq += 1;
+    var pname = 'tree-code-' + Date.now().toString(36) + '-' + winSeq;
+    pending[pname] = path;
+    var w = window.open(
+      Tezcatl.config.sibling('panels/resident/code_editor.html') + '?name=' + encodeURIComponent(pname),
+      pname,
+    );
+    if (!w) flash('popup blocked');
+    else flash('opening ' + path + ' …');
+  }
+
+  bus.on('code.ready', function (payload, meta) {
+    var pname = payload && payload.name;
+    if (!pname || !pending[pname]) return;
+    var path = pending[pname];
+    delete pending[pname];
+    var fid = meta && meta.from && meta.from.id;
+    fetch(fsUrl(path, true), { cache: 'no-store' })
+      // not ok: the relay's reason ("not UTF-8 text ..."), else the status
+      .then(function (r) { return r.ok ? r.text() : r.text().then(function (t) { var j = null; try { j = JSON.parse(t); } catch (_) {} throw new Error((j && j.error) || ('HTTP ' + r.status)); }); })
+      .then(function (text) {
+        // the window saves it itself (code_editor writes its own file)
+        bus.post('code.set', { text: text, filename: path }, { to: fid });
+        flash('opened ' + path);
+      })
+      .catch(function (e) { flash('read failed: ' + (e && e.message || e)); });
+  });
+
+  treeEl.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(rows.length - 1, sel + 1); render(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(0, sel - 1); render(); }
+    else if (e.key === 'ArrowRight' || e.key === 'Enter') { e.preventDefault(); activate(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); collapse(); }
+    else if (e.key === 'Home') { e.preventDefault(); sel = 0; render(); }
+    else if (e.key === 'End') { e.preventDefault(); sel = rows.length - 1; render(); }
+    else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); openWindow(); }
+    else if (e.key === 'm' || e.key === 'M') {
+      e.preventDefault();
+      var br = rows[sel];
+      if (br) bmToggle(br.node);
+    }
+  });
+
+  bus.on('bookmark.changed', bmLoad);
+
+  // fs.changed {op, paths}: a file was made, deleted or moved (code_editor's :w of a
+  // new file, :Delete, :Rename / :Move). The directories holding those paths
+  // are read again, if this tree has them open; what is open stays open.
+  function findNode(path) {
+    var stack = roots.slice();
+    while (stack.length) {
+      var n = stack.pop();
+      if ((n.path || '') === path) return n;
+      if (n.children) stack.push.apply(stack, n.children);
+    }
+    return null;
+  }
+  function refreshDir(path) {
+    var node = findNode(path);
+    if (!node || !node.children) return Promise.resolve();
+    var old = {};
+    node.children.forEach(function (ch) { old[ch.name + (ch.dir ? '/' : '')] = ch; });
+    node.children = null;
+    return load(node).then(function () {
+      node.children = (node.children || []).map(function (ch) {
+        var o = old[ch.name + (ch.dir ? '/' : '')];
+        return o ? Object.assign(o, { size: ch.size }) : ch;
+      });
+    });
+  }
+  bus.on('fs.changed', function (payload) {
+    var paths = (payload && Array.isArray(payload.paths)) ? payload.paths : [];
+    var dirs = {};
+    paths.forEach(function (p) { var i = String(p).lastIndexOf('/'); dirs[i < 0 ? '' : p.slice(0, i)] = true; });
+    ready.then(function () { return Promise.all(Object.keys(dirs).map(refreshDir)); }).then(render);
+  });
+
+  // tree.reload {tree}: read the root again from disk (the skin's tree update)
+  bus.on('tree.reload', function (payload) {
+    var p = payload || {};
+    if (p.tree && p.tree !== NAME) return;
+    var root = roots[0];
+    root.children = null;
+    root.open = true;
+    ready.then(function () { return load(root); }).then(render);
+  });
+
+  // tree.root {path, tag, tree}: show `path` as the root. `tree` names the
+  // tree panel it is for (a skin's own); without it every tree takes it.
+  bus.on('tree.root', function (payload) {
+    var p = payload || {};
+    if (p.tree && p.tree !== NAME) return;
+    if (typeof p.path !== 'string') return;
+    var path = normRootPath(p.path);
+    roots = [{ label: p.tag || path || '/', path: path, dir: true, open: true, isRoot: true,
+               children: null, loading: false }];
+    sel = 0;
+    footEl.textContent = FOOT;
+    footEl.style.color = '';
+    document.getElementById('title').textContent = 'tree · ' + (p.tag || path || '/');
+    var root = roots[0];
+    ready.then(function () { return load(root); }).then(function () { render(); treeEl.focus(); });
+  });
+
+  bus.on('bookmark.goto', function (payload) {
+    var p = payload && payload.path;
+    if (typeof p !== 'string' || !p) return;
+    revealPath(p.replace(/^\/+/, ''));
+  });
+
+  // Pick the root that owns `p` (longest matching prefix; a "" root matches
+  // anything), then expand it and walk the remaining segments.
+  function rootFor(p) {
+    var best = null;
+    roots.forEach(function (rt) {
+      if (rt.path === '' || p === rt.path || p.indexOf(rt.path + '/') === 0) {
+        if (!best || rt.path.length > best.path.length) best = rt;
+      }
+    });
+    return best;
+  }
+
+  function revealPath(fullPath) {
+    var start = rootFor(fullPath);
+    if (!start) { flash('bookmark: no root for ' + fullPath); return; }
+    var rest = start.path ? fullPath.slice(start.path.length).replace(/^\/+/, '') : fullPath;
+    var segs = rest.split('/').filter(Boolean);
+    start.open = true;
+    if (!segs.length) {
+      load(start).then(function () {
+        render();
+        var idx = rows.map(function (r) { return r.node; }).indexOf(start);
+        if (idx >= 0) { sel = idx; render(); treeEl.focus(); }
+      });
+      return;
+    }
+    var node = start;
+    (function step(i) {
+      load(node).then(function () {
+        var child = (node.children || []).filter(function (c) { return c.name === segs[i]; })[0];
+        if (!child) { render(); flash('bookmark: not found ' + segs.join('/')); return; }
+        if (i < segs.length - 1) {
+          child.open = true;
+          node = child;
+          step(i + 1);
+        } else {
+          render();
+          var idx = rows.map(function (r) { return r.node; }).indexOf(child);
+          if (idx >= 0) {
+            sel = idx;
+            render();
+            treeEl.focus();
+            var el = treeEl.children[sel];
+            if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
+          }
+          if (child.dir && !child.open) { child.open = true; load(child).then(render); }
+        }
+      });
+    })(0);
+  }
+
+  treeEl.focus();
+})();
+</script>
+</body>
+</html>

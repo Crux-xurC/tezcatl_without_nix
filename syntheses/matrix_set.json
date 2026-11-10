@@ -1,0 +1,12 @@
+{
+  "name": "matrix_set",
+  "axis": "h",
+  "ratio": [1],
+  "columns": [[
+    ["matrix_bar", 1, 1, false, { "px": 24 }],
+    ["matrix_table", 2, 6, false, { "query": { "kind": "xipe_rows", "ref": "all", "root": "." } }],
+    ["code_cmd_in", 3, 1]
+  ]],
+  "main": "matrix_bar",
+  "move": { "table": "matrix_table", "line": "code_cmd_in", "bar": "matrix_bar" }
+}

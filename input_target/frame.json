@@ -1,0 +1,8 @@
+{
+  "label": "frame",
+  "desc": "another frame (another tab or window -- Poca's split view): the line runs there as one typed in its own input form (skin.line; D-bridge). A line of chars only. One per frame open but this one.",
+  "scripts": [
+    "lib/core/lead.js",
+    "lib/target/frame.js"
+  ]
+}

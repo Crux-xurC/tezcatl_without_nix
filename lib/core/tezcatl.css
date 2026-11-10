@@ -1,0 +1,120 @@
+/* Shared look for the Tezcatl dev pages. Phase 6 is function-only; the real
+   UI (LCARS, fonts, layout) is Phase 7. */
+* { box-sizing: border-box; }
+body {
+  font-family: var(--tz-ui-font, monospace);
+  margin: 1em;
+  background: #111;
+  color: #ddd;
+}
+h1, h2 { font-weight: normal; color: #888; }
+h1 { font-size: 1em; }
+h2 { font-size: 0.95em; margin: 0 0 0.5em; }
+
+.status { margin-bottom: 0.8em; }
+.status.open { color: #6f6; }
+.status.connecting { color: #fc6; }
+.status.closed { color: #f66; }
+
+.target {
+  border: 1px solid #444;
+  padding: 0.5em;
+  margin-bottom: 0.8em;
+  white-space: pre;
+}
+
+.log {
+  border: 1px solid #444;
+  padding: 0.5em;
+  height: 60vh;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.log .ts { color: #666; }
+.log .in-ev .type { color: #6cf; }
+.log .in-ev .source { color: #999; }
+.log .in-ctx { color: #9c9; }
+.log .in-meta { color: #777; }
+.log .out-sent { color: #6cf; }
+.log .out-drop { color: #c86; }
+.log .out-fail { color: #f66; }
+
+/* Input modes */
+.modes { margin-bottom: 0.6em; }
+.modes button {
+  font: inherit; background: #222; color: #999;
+  border: 1px solid #555; padding: 0.25em 0.7em; cursor: pointer;
+}
+.modes button.on { color: #6cf; border-color: #6cf; }
+
+.form { border: 2px solid #444; padding: 0.6em; margin-bottom: 0.8em; }
+.form .kbd {
+  font: inherit; width: 100%; background: #000; color: #ddd;
+  border: 1px solid #666; padding: 0.35em 0.5em;
+}
+.form .send {
+  font: inherit; margin-top: 0.5em; background: #222; color: #ddd;
+  border: 1px solid #666; padding: 0.3em 0.9em; cursor: pointer;
+}
+/* "composed" -- a framed readout of the sequence that will be sent, live as
+   you type / capture keys. */
+.form .composed {
+  margin-top: 0.5em;
+  border: 1px solid #555;
+  background: #0a0a0a;
+  padding: 0.4em 0.55em;
+  min-height: 1.7em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.form .composed .lbl { color: #666; }
+.form .composed .preview { color: #6c9; }
+.form .composed .preview.error { color: #f66; }
+.form .lastcap { margin-top: 0.3em; color: #6cf; min-height: 1.1em; }
+.form .caphint { margin-top: 0.35em; color: #777; min-height: 1.2em; }
+
+/* Form capture ON: keystrokes are being intercepted into the field. */
+.form.capturing { border-color: #6f6; }
+.form.capturing .kbd {
+  border-color: #6f6;
+  box-shadow: 0 0 6px rgba(102, 255, 102, 0.45);
+  background: #071207;
+}
+.form.capturing .caphint { color: #6f6; }
+
+/* Text mode: raw text block -> one event per character */
+.textmode { border: 2px solid #444; padding: 0.6em; margin-bottom: 0.8em; }
+.textmode .text {
+  font: inherit; width: 100%; background: #000; color: #ddd;
+  border: 1px solid #666; padding: 0.35em 0.5em; resize: vertical;
+  white-space: pre;
+}
+.textmode .textsend {
+  font: inherit; margin-top: 0.5em; background: #222; color: #ddd;
+  border: 1px solid #666; padding: 0.3em 0.9em; cursor: pointer;
+}
+.textmode .textpreview { margin-top: 0.4em; color: #6c9; min-height: 1.2em; white-space: pre-wrap; }
+.textmode .textpreview.error { color: #f66; }
+
+/* Input capture */
+.capture {
+  border: 2px solid #444;
+  padding: 0.6em;
+  margin-bottom: 0.8em;
+}
+.capture.on { border-color: #6f6; }
+.capture button {
+  font: inherit;
+  background: #222;
+  color: #ddd;
+  border: 1px solid #666;
+  padding: 0.3em 0.8em;
+  cursor: pointer;
+}
+.capture.on button { border-color: #6f6; color: #6f6; }
+.capture .hint { color: #777; margin-left: 0.8em; }
+
+/* main.html two-column layout */
+.cols { display: flex; gap: 1em; align-items: flex-start; }
+.col { flex: 1; min-width: 0; }

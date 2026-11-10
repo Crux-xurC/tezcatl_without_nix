@@ -1,0 +1,7 @@
+{
+  "title": "Kill ring",
+  "kind": "killring",
+  "labels": { "empty": "(kill ring is empty)" },
+  "hint": "p: yank (kept) · P: yank (removed from the ring) · Del: delete",
+  "keys": { "p": "keep", "P": "pop" }
+}

@@ -1,0 +1,7 @@
+{
+  "label": "emacs-vent",
+  "desc": "Emacs through emacs-vent: the context and the events, as panels/resident/output.html shows them (its own connection of config.json). One, always there.",
+  "scripts": [
+    "lib/vent/protocol.js", "lib/core/text.js", "lib/core/ticket.js", "lib/core/ws.js", "lib/vent/vent-init.js", "lib/recv/emacs-vent.js"
+  ]
+}

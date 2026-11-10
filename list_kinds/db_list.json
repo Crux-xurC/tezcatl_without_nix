@@ -1,0 +1,7 @@
+{
+  "title": "Database windows",
+  "kind": "db_list",
+  "pollMs": 10000,
+  "labels": { "empty": "(no database window: database opens one)" },
+  "removeKey": "Delete"
+}

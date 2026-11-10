@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — How_to_use</title>
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+<style>
+  /* how to use the input form, drawn from the lead-key table and command_map.json
+     (lib/skin/how-to-use-page.js): small, scrolls in a narrow box of the dock */
+  :root { --hu-bg: #0a0710; --hu-title: #9a7fc0; --hu-key: #ff9f1c; --hu-text: #b9b0cc; }
+  html, body { height: 100%; margin: 0; background: var(--hu-bg); }
+  html { scrollbar-width: thin; scrollbar-color: #3a3048 var(--hu-bg); }
+  body { overflow: auto; scrollbar-width: thin; scrollbar-color: #3a3048 var(--hu-bg); padding: .3em .5em; box-sizing: border-box;
+         font: 11px/1.45 var(--tz-ui-font, monospace); color: var(--hu-text); }
+  h2 { margin: .4em 0 .1em; font: inherit; color: var(--hu-title); }
+  h2:first-child { margin-top: 0; }
+  .row { display: flex; gap: .6em; white-space: nowrap; }
+  .key { color: var(--hu-key); flex: none; }
+  .text { overflow: hidden; text-overflow: ellipsis; }
+  #err { color: #ff7a6b; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="err"></div>
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/commands.js"></script>
+<script src="../../lib/core/lead.js"></script>
+<script src="../../lib/skin/how-to-use.js"></script>
+<script src="../../lib/skin/how-to-use-page.js"></script>
+</body>
+</html>

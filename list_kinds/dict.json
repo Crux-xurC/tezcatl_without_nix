@@ -1,0 +1,10 @@
+{
+  "title": "Dictionary",
+  "kind": "dict",
+  "dataFile": "dict.json",
+  "list": "default",
+  "pollMs": 1000,
+  "labels": { "empty": "(no words -- yank lines like \"word: note\", then p)" },
+  "hint": "p: store the latest yank (one entry per line, the word is what precedes the first colon; when the filter is empty) · M-a: store the filter's \"word: note\" · Enter: to the input · Del: delete",
+  "keys": { "p": "store", "M-a": "add" }
+}

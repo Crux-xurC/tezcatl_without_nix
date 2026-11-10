@@ -1,0 +1,7 @@
+{
+  "doc": "Stage several files with Magit (D-run-table, D-decode-emacs): run from magit.changed-files makes one row a changed file (section, path -- absolute), each row calling magit.stage-file through the intent command. Leave a row out with - before run start; a staged row staged again changes nothing. To unstage instead, write intent magit.unstage-file path=\"{path}\" in the rows wanted. A failure is the frame's ! line (err).",
+  "columns": ["id", "input", "line", "wait", "auto", "status", "note", "section", "path"],
+  "defaults": { "input": "t", "line": "intent magit.stage-file path=\"{path}\"", "wait": "2", "auto": "T" },
+  "keys": {},
+  "rows": []
+}

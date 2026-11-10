@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Tezcatl — code_editor (buffer editor)</title>
+<link rel="stylesheet" href="../../lib/core/tezcatl.css">
+<link rel="stylesheet" href="../../lib/core/fonts.css">
+
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; background: #000; color: #ddd; display: flex;
+         flex-direction: column; font-family: var(--tz-ui-font, monospace); }
+  #head { flex: 0 0 auto; display: flex; gap: 1em; align-items: center;
+          padding: 3px 10px; font: 11px/1.6 var(--tz-ui-font, monospace);
+          background: #0a0710; color: #9a7fc0; border-bottom: 1px solid #241a33; }
+  #head b { color: #ff9f1c; font-weight: normal; }
+  #head .dirty { color: #9aa855; }
+  #head .ro { color: #fc6; }
+  #head .hint { color: #6a5c80; }
+  #head .path { color: #ccc; }
+  #editor { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+  .cm-editor { height: 100%; }
+  .cm-editor.cm-focused { outline: none; }
+  .cm-scroller { overflow: auto; }
+  
+  .cm-panels { background: #0a0710; color: #ddd; border-color: #241a33 !important; }
+  .cm-vim-panel, .cm-panel.cm-panel-lint { font-family: var(--tz-ui-font, monospace); }
+  .cm-vim-panel input { font-family: var(--tz-ui-font, monospace); color: #ddd; }
+</style>
+</head>
+<body>
+<div id="head">
+  <b id="name">code_editor</b>
+  <span id="path" class="path"></span>
+  <span id="lang">text</span>
+  <span id="dirty" class="dirty" hidden>●</span>
+  <span id="ro" class="ro" hidden>RO</span>
+  <span id="msg" class="hint"></span>
+</div>
+<div id="editor"></div>
+
+<script src="../../lib/core/config.js"></script>
+<script src="../../lib/core/ticket.js"></script>
+<script src="../../lib/core/panel-bus.js"></script>
+<script src="../../lib/core/panel-frame.js"></script>
+<script src="../../lib/code/code-languages.js"></script>
+<script src="../../lib/code/code-files.js"></script>
+<script src="../../lib/code/code-locate.js"></script>
+<script src="../../lib/code/code-outline.js"></script>
+<script src="../../lib/code/juncture.js"></script>
+<script src="../../lib/code/marks.js"></script>
+<script src="../../lib/core/commands.js"></script>
+<script src="../../lib/skin/skin-ex.js"></script>
+<script type="module">
+// The editor core (lib/code/code-editor.js) owns the keymaps and their
+// kill-ring bridges. This page names no keymap: a file editor takes code.json's
+// "editorKeymap" (vim by default; ?keymap= pins one), D-code-editor.
+// ?path=<path from the FS root> opens that file; the file commands are
+// :w[!] :e[!] <path> :Delete[!] :Rename <name> :Move <path> (lib/code/code-files.js),
+// typed here with vim, or from the skin's input line with any keymap.
+import { createCodeEditor } from "../../lib/code/code-editor.js";
+
+const ed = createCodeEditor({
+  editable: true,
+  surface: "code",
+  // a file editor: answers code.query / code.reveal (lib/code/code-locate.js, A10)
+  files: true,
+  head: {
+    path: document.getElementById("path"),
+    lang: document.getElementById("lang"),
+    dirty: document.getElementById("dirty"),
+    ro: document.getElementById("ro"),
+    msg: document.getElementById("msg"),
+  },
+});
+document.getElementById("name").textContent = ed.name;
+
+const params = new URLSearchParams(location.search);
+if (!window.Tezcatl || !window.Tezcatl.bus || (!params.get("name") && !params.get("lang") && !params.get("path"))) {
+  ed.flash("scratch — no source; a skin drives code.set / code.get");
+}
+ed.focus();
+</script>
+</body>
+</html>

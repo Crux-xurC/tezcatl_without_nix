@@ -1,0 +1,70 @@
+/* Tezcatl bundled fonts, served over HTTP from the repo root (:4001).
+   Linked by pages that want them (code*.html, xterm.html). This file is the
+   only path to them (nix/fonts.nix packages no face the pages use), so a
+   plain `python3 -m http.server` is enough and no fontconfig is involved.
+
+   Senobi Gothic (M+ / IPA-derived, redistributable) is the
+   single bundled UI face. It replaced Okuda (Pixel Sagas, All Rights
+   Reserved) because Okuda read poorly at UI sizes. Senobi
+   Gothic covers Latin + kana + common kanji in one family and stays legible
+   small, so the pages use it alone with a real monospace fallback behind it.
+
+   fonts/ is local only (git-ignored, never pushed): a checkout without it
+   just 404s here and `swap` drops to the monospace fallback.
+
+   Senobi Gothic ships three cuts (Regular / Medium / Bold); the 500 rule
+   maps to Medium and 700 to Bold so the browser does not synthesise them.
+
+   Without fonts/, local() picks the same family installed on the machine
+   (e.g. via the nix profile), before falling back to monospace.
+
+   --tz-ui-font is the face of every page except the terminal:
+   pages write `var(--tz-ui-font, monospace)`. xterm keeps its own monospaced
+   face (config.json ui.terminal.fontFamily, PlemolJP Console) because a
+   mirrored terminal needs exact cell widths. The virtual keyboard
+   (panels/extra/virtual_keyboard.html, ASCII art) uses the same face for
+   the same reason; nothing else does.
+
+   heterodox_chess (fairy chess pieces, 13 pieces x 4 kinds; its ttf is
+   https://github.com/Crux-xurC/heterodox_chess_fonts, placed by hand under
+   fonts/heterodox-chess/ like Senobi Gothic) sits in the private use area,
+   where Chromium looks for no fallback face: a page shows the pieces only
+   if its font-family names the font. It comes first in
+   --tz-ui-font, and unicode-range keeps it to its own code points, so no
+   other character is drawn with it and the ttf is fetched only by a page
+   that shows a piece. */
+
+:root { --tz-ui-font: "heterodox_chess", "Senobi Gothic", monospace; }
+
+@font-face {
+  font-family: "heterodox_chess";
+  src: url("../../fonts/heterodox-chess/heterodox_chess.ttf") format("truetype"),
+       local("heterodox_chess");
+  unicode-range: U+E900-E933;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Senobi Gothic";
+  src: url("../../fonts/senobi-gothic-fixed/Senobi-Gothic-Regular.ttf") format("truetype"),
+       local("Senobi Gothic Regular"), local("Senobi-Gothic-Regular");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Senobi Gothic";
+  src: url("../../fonts/senobi-gothic-fixed/Senobi-Gothic-Medium.ttf") format("truetype"),
+       local("Senobi Gothic Medium"), local("Senobi-Gothic-Medium");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Senobi Gothic";
+  src: url("../../fonts/senobi-gothic-fixed/Senobi-Gothic-Bold.ttf") format("truetype"),
+       local("Senobi Gothic Bold"), local("Senobi-Gothic-Bold");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}

@@ -1,0 +1,9 @@
+{
+  "doc": "The sources of the receiving side (panels/extra/output_target.html; D-unified-dock): where the lines the frame's receiving side shows come from. In the order shown; letter is what selects one (with a number after it when the skin has more than one of it). The ids are those of input_target/ where they are the same thing, so that while the keyboard is in the input form the receiving side follows where it sends. Each id has output_target/<id>.json. test/output-target-dir.test.js checks this list against the directory.",
+  "sources": [
+    { "id": "tezcatl", "letter": "t" },
+    { "id": "emacs-vent", "letter": "e" },
+    { "id": "xterm", "letter": "x" },
+    { "id": "frame", "letter": "f" }
+  ]
+}

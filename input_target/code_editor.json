@@ -1,0 +1,5 @@
+{
+  "label": "code_editor",
+  "desc": "a code_editor of the same skin: the keys pressed on its editor as typed (code.keys; vim and code.json's keys take them, a char nobody takes goes in as text). One per code_editor open; shows its file and vim's mode.",
+  "scripts": ["lib/target/code_editor.js"]
+}

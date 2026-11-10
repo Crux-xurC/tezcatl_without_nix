@@ -1,0 +1,42 @@
+{
+  "name": "standard",
+  "side": "b",
+  "size": { "b": "14em", "l": "36em", "r": "36em" },
+  "parts": {
+    "help": "How_to_use",
+    "map": "panel_abstract",
+    "vkbd": "virtual_keyboard",
+    "itgt": "input_target",
+    "form": "@form",
+    "recv": "@recv",
+    "clock": "clock",
+    "gtgt": "@gsel",
+    "sugg": "@sugg",
+    "otgt": "output_target",
+    "dbls": "db_list"
+  },
+  "grid": {
+    "b": {
+      "areas": ["help itgt  form recv vkbd",
+                "map  gtgt  sugg recv vkbd",
+                "map  clock sugg recv vkbd",
+                "map  otgt  sugg recv vkbd",
+                "dbls dbls  dbls dbls dbls"],
+      "rows": [3, 1, 1, 1, 1],
+      "cols": [2, 3, 6, 6, 6]
+    },
+    "l": {
+      "areas": ["help  map",
+                "vkbd  vkbd",
+                "itgt  form",
+                "gtgt  sugg",
+                "clock sugg",
+                "otgt  sugg",
+                "recv  recv",
+                "dbls  dbls"],
+      "rows": [2, 4, 3, 1, 1, 1, 6, 1],
+      "cols": [1, 2]
+    },
+    "r": "l"
+  }
+}

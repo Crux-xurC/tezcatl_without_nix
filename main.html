@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="lib/core/fonts.css">
+<title>Tezcatl</title>
+<link rel="stylesheet" href="lib/core/tezcatl.css">
+
+<style>
+  html, body { height: 100%; margin: 0; background: #0a0710; }
+  #frame { display: block; width: 100%; height: 100%; border: 0; background: #000; }
+  #err { position: fixed; left: 0; right: 0; top: 0; padding: .2em .6em; color: #ff6f69; background: #0a0710e0;
+         font: 12px/1.4 var(--tz-ui-font, monospace); }
+  #err:empty { display: none; }
+</style>
+</head>
+<body>
+<!-- the page itself is a frame: the dock and an image panel, the saved skin main (skins/main.json).
+     The list of every page is the panel `pages` (skin add pages), or launcher.html. -->
+<iframe id="frame" title="tezcatl" src="panels/skins/frame.html?skin=main"></iframe>
+<div id="err"></div>
+
+<iframe id="daemon" hidden title="session services" src="panels/invisible/daemon.html"></iframe>
+
+<script src="lib/core/config.js"></script>
+<script src="lib/core/panel-bus.js"></script>
+<script src="lib/core/open-page.js"></script>
+<script>
+(function () {
+  'use strict';
+  // what went wrong with the startup windows: a line over the frame (it is no panel of the frame, so not its receiving side)
+  var errEl = document.getElementById('err');
+  function say(text) { errEl.textContent = text; }
+
+  // opening a tab or a window, config.json launcher and the pages: lib/core/open-page.js
+  var op = Tezcatl.openPage;
+  var manifest = null;
+  var byId = {};
+  var launcher = op.settings(null);
+  var startupCfg = null;
+
+  Tezcatl.config.load().then(function (c) {
+    startupCfg = (c && c.ui && c.ui.startup) || {};
+    return op.loadSettings();
+  }).then(function (s) {
+    launcher = s;
+    maybeRunStartup();
+  }).catch(function () {});
+
+  op.loadIndex()
+    .then(function (by) {
+      manifest = by;
+      byId = by;
+      maybeRunStartup();
+    })
+    .catch(function (e) {
+      say('! main.html ── cannot read list_kinds/panels_and_skins.json (' + (e && e.message || e) +
+        '): no startup windows -- launcher.html works without it');
+    });
+
+  // config.json ui.startup.windows: [{ id, mode?: "tab"|"window", name? }].
+  // Opened once per main.html tab lifetime (sessionStorage guard); a stable
+  // window name per entry means a reload refocuses rather than duplicates.
+  var startupDone = false;
+  function maybeRunStartup() {
+    if (startupDone || !manifest || !startupCfg) return;
+    var list = startupCfg.windows;
+    if (!Array.isArray(list) || !list.length) { startupDone = true; return; }
+    try {
+      if (sessionStorage.getItem('tezcatl:startup-done')) { startupDone = true; return; }
+    } catch (_) {}
+    startupDone = true;
+    var blocked = 0;
+    list.forEach(function (entry) {
+      var it = entry && byId[entry.id];
+      if (!it) return;
+      var how = (entry.mode === 'tab' || entry.mode === 'window') ? entry.mode : null;
+      // a stable window name per entry: a reload refocuses rather than duplicates
+      if (!op.open(it, how, launcher, entry.name || ('tezcatl-startup-' + it.id)).ok) blocked += 1;
+    });
+    if (blocked) {
+      say('! main.html ── ' + blocked + ' startup window(s) were blocked -- allow pop-ups for this origin');
+    }
+    try { sessionStorage.setItem('tezcatl:startup-done', '1'); } catch (_) {}
+  }
+
+})();
+</script>
+</body>
+</html>
