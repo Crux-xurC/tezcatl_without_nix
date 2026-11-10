@@ -26,7 +26,8 @@ Where tezcatl's documents say `nix develop`, `t` or `nix/…` (marked `<!-- env:
 - Elixir 1.18 or later with Erlang/OTP 27 or later (checked with Elixir 1.20.0 / OTP 29)
 - gcc, g++, make and libcap, to build erlexec (the PTYs)
 - ripgrep (`rg`) for `:grep`
-- Optional: the language servers in `lsp.json` you want (see [lsp/README.md](lsp/README.md)); MariaDB for the database windows
+- Optional: the language servers in `lsp.json` you want (see [lsp/README.md](lsp/README.md)) -- for JavaScript,
+  `typescript-language-server` with TypeScript 5; MariaDB for the database windows
 - The backends, started on their own: Emacs with [emacs-vent](https://github.com/Crux-xurC/emacs-vent) (`:4000`),
   [Xipe Totec](https://github.com/Crux-xurC/xipe_totec) (`:4200`)
 - A Chromium-based browser, or [Poca](https://github.com/Crux-xurC/poca)
@@ -56,8 +57,11 @@ node --test test/*.test.js  # the browser side's
 
 ## Status
 
-A development version, not checked as widely as tezcatl (Nix management): the relay's tests pass and it starts and serves the pages;
-the end-to-end tests (`test/e2e/`) still assume Nix.
+A development version, not checked as widely as tezcatl (Nix management). Checked without Nix (Elixir 1.20 / OTP 29): the relay's
+tests, the browser side's, and 64 of the 71 end-to-end scenarios (`test/e2e/stack.sh up`, then `node test/e2e/<name>.mjs`; the
+stack runs Xipe Totec from `XIPE_TOTEC_DIR`), with typescript-language-server and TypeScript 5. Not yet checked here: the scenarios
+that need an Emacs with magit (`stack.sh emacs`: `magit_*`, `decode_emacs_magit`), a MariaDB login (`sql_socket`), or the OCaml /
+Haskell / Nix / shell language servers (`lsp_langs`, and those parts of `code_outline` and `lsp_paths`).
 
 ## License
 

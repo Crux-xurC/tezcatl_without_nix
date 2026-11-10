@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
+# This repository's own replacement of tezcatl's test/e2e/stack.sh (sync/replaced.txt;
+# upstream's is sync/upstream/test/e2e/stack.sh): the same stack without Nix.
+# The relay runs from this repository's _build (mix compile first, here), its
+# dependencies on ERL_LIBS as the dev shell had them, and serves the pages
+# itself (app/pages.ex) instead of python3. Xipe Totec and the fake Xipe server
+# use the same ERL_LIBS. `emacs` uses the Emacs on PATH (EMACS to choose one).
+#
 # test/e2e/stack.sh up|down|restart-fake|emacs -- an isolated stack for the headless-Chromium
 # checks in this directory. Never touches the real one (:4000
 # Emacs, :4100 relay, :4001 pages, xipe_totec's own tables/).
 #
 #   pages    :PAGES_PORT   a shadow of this repo (symlinks) whose config.json
-#                          points at the test relay
-#   relay    :RELAY_PORT   this repo's main.exs, cwd = $E2E_DIR/relay (own
+#                          points at the test relay; served by the relay's VM
+#   relay    :RELAY_PORT   this repo's relay (app/application.ex), cwd = $E2E_DIR/relay (own
 #                          xipe.json), FS root = $E2E_DIR/fsroot
 #   xipe     :XIPE_PORT    a *copy* of ../xipe_totec (its state is __DIR__-
 #                          relative) on a copy of its calc_sample fixture with a
@@ -41,6 +48,10 @@ CHROMIUM="${CHROMIUM:-chromium}"
 # editor/emacs beside the repository (../editor/emacs), found from a worktree too
 EDITOR_EMACS_DIR="${EDITOR_EMACS_DIR:-$(cd "$(git -C "$tz" rev-parse --path-format=absolute --git-common-dir)/../.." && pwd)/editor/emacs}"
 
+# what nix develop gave: the BEAM packages (here: mix's build) and UTF-8 file names
+export ERL_LIBS="$tz/_build/dev/lib"
+export ELIXIR_ERL_OPTIONS="+fnu"
+
 port_open() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
 
 wait_port() {
@@ -58,7 +69,7 @@ start() {
 }
 
 start_fake() {
-  start fake bash -c "cd '$tz' && exec nix develop --command env FAKE_XIPE_PORT=$FAKE_XIPE_PORT elixir '$here/fake_xipe.exs'"
+  start fake env FAKE_XIPE_PORT=$FAKE_XIPE_PORT elixir "$here/fake_xipe.exs"
 }
 
 # stop the fake Xipe server and start it again on the same port -- what
@@ -81,10 +92,14 @@ up() {
   for p in "$PAGES_PORT" "$RELAY_PORT" "$XIPE_PORT" "$FAKE_XIPE_PORT" "$CDP_PORT"; do
     if port_open "$p"; then echo "stack.sh: :$p is already in use (stack already up? run: $0 down)" >&2; exit 1; fi
   done
+  ( cd "$tz" && MIX_ENV=dev mix compile ) >/dev/null || { echo "stack.sh: mix compile failed (mix deps.get first?)" >&2; exit 1; }
   rm -rf "$E2E_DIR"
   mkdir -p "$E2E_DIR"/{pages,relay,fsroot/xproj,xt,chrome}
   : >"$E2E_DIR/pids"
 
+  # local/ (git-ignored, a person's own) may not exist in a fresh checkout; frame_skin.mjs and
+  # frame_block.mjs write into it while running, so it must be there to be linked
+  mkdir -p "$tz/local"
   # pages: every top-level entry symlinked, config.json rewritten to the test relay
   for f in "$tz"/* "$tz"/.[!.]*; do
     [ -e "$f" ] || continue
@@ -94,7 +109,7 @@ up() {
   sed "s#ws://127.0.0.1:4100#ws://127.0.0.1:$RELAY_PORT#g" "$tz/config.json" >"$E2E_DIR/pages/config.json"
 
   # relay: this repo's code, its own cwd (xipe.json is read from the cwd)
-  ln -s "$tz/lib" "$tz/main.exs" "$tz/lsp.json" "$E2E_DIR/relay/"
+  ln -s "$tz/lib" "$tz/lsp.json" "$E2E_DIR/relay/"
   cat >"$E2E_DIR/relay/xipe.json" <<EOF
 { ".":    { "mode": "spawn", "installDir": "$E2E_DIR/xt", "command": ["elixir", "main.exs", "serve"], "port": $XIPE_PORT },
   "fake": { "mode": "connect", "host": "127.0.0.1", "port": $FAKE_XIPE_PORT } }
@@ -121,17 +136,16 @@ EOF
     echo "stack.sh: no xipe_totec at $XIPE_TOTEC_DIR -- root \".\" will not work" >&2
   fi
 
-  start pages python3 -m http.server --bind 127.0.0.1 --directory "$E2E_DIR/pages" "$PAGES_PORT"
-  # The settings go *inside* `nix develop --command`, after the shellHook: the
-  # hook sources this machine's local.env (e.g. TEZCATL_FS_ROOT=~/projects),
-  # which would otherwise replace them and point the test relay at real files
+  # The pages: the relay's VM serves $E2E_DIR/pages (TEZCATL_PAGES_*). This
+  # machine's local.env is not read here (bin/t reads it), so the test relay
+  # never points at real files
   # (TEZCATL_MIRROR_DIR, TEZCATL_WORK_DIR and TEZCATL_IDS_DIR too: the copies, the work place and the id lists of the tests stay in $E2E_DIR).
-  # The database (D-db-backend): local.env's MariaDB account (E2E_DB_USER: another one, e.g. an account made for the
+  # The database (D-db-backend): the relay's default MariaDB account, or E2E_DB_USER (e.g. an account made for the
   # tests only), but always its database tezcatl_e2e, never tezcatl.
-  start relay bash -c "cd '$tz' && exec nix develop --command env TEZCATL_RELAY_PORT=$RELAY_PORT TEZCATL_VENT_PORT=$VENT_PORT \
+  start relay bash -c "cd '$E2E_DIR/relay' && exec env PATH='$tz/lsp/bin':\"\$PATH\" TEZCATL_PAGES_PORT=$PAGES_PORT TEZCATL_PAGES_DIR='$E2E_DIR/pages' TEZCATL_RELAY_PORT=$RELAY_PORT TEZCATL_VENT_PORT=$VENT_PORT \
     TEZCATL_FS_ROOT='$E2E_DIR/fsroot' TEZCATL_MIRROR_DIR='$E2E_DIR/mirror' TEZCATL_WORK_DIR='$E2E_DIR/work' TEZCATL_IDS_DIR='$E2E_DIR/ids' TEZCATL_DB_NAME=tezcatl_e2e ${E2E_DB_USER:+TEZCATL_DB_USER='$E2E_DB_USER'} TEZCATL_ALLOWED_ORIGINS=http://127.0.0.1:$PAGES_PORT XIPE_TOTEC_LSP=off \
     TEZCATL_AUTH=off POCA_SECRET='${E2E_SECRET:-}' \
-    bash -c \"cd '$E2E_DIR/relay' && exec elixir main.exs\""
+    elixir --no-halt -e '{:ok, _} = Application.ensure_all_started(:tezcatl_relay)'"
   start_fake
   start chromium "$CHROMIUM" --headless=new --disable-gpu --no-first-run --no-default-browser-check \
     --remote-debugging-port="$CDP_PORT" --window-size=1200,800 --user-data-dir="$E2E_DIR/chrome" about:blank
@@ -154,7 +168,7 @@ emacs() {
   if port_open "$VENT_PORT"; then echo "stack.sh: :$VENT_PORT is already in use" >&2; exit 1; fi
   [ -e "$EDITOR_EMACS_DIR/init.el" ] || { echo "stack.sh: no $EDITOR_EMACS_DIR/init.el" >&2; exit 1; }
   local bin
-  bin="$(nix build --no-link --print-out-paths "path:$EDITOR_EMACS_DIR")/bin/emacs"
+  bin="$(command -v "${EMACS:-emacs}")" || { echo "stack.sh: no Emacs on PATH (EMACS=<path>)" >&2; exit 1; }
   mkdir -p "$E2E_DIR"/{emacs/state,emacs/xdg-state,emacs/xdg-data,fsroot/git}
   git -C "$E2E_DIR/fsroot/git" init -q 2>/dev/null || true
   start emacs bash -c "cd '$E2E_DIR/fsroot/git' && exec env TEZCATL_EMACS_STATE_DIR='$E2E_DIR/emacs/state' XDG_STATE_HOME='$E2E_DIR/emacs/xdg-state' XDG_DATA_HOME='$E2E_DIR/emacs/xdg-data' \

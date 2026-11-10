@@ -510,7 +510,6 @@ test/e2e/markdown.mjs
 test/e2e/matrix_commands.mjs
 test/e2e/matrix_set.mjs
 test/e2e/poca_gate.mjs
-test/e2e/poca_tezcatl.sh
 test/e2e/problems.mjs
 test/e2e/project_env.mjs
 test/e2e/radar.mjs
@@ -519,7 +518,6 @@ test/e2e/run_table.mjs
 test/e2e/secret_gate.mjs
 test/e2e/skin_list.mjs
 test/e2e/sql_socket.mjs
-test/e2e/stack.sh
 test/e2e/suggestion_list.mjs
 test/e2e/task_table.mjs
 test/e2e/tree_skin.mjs

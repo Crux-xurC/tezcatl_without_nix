@@ -27,6 +27,8 @@ export TEZCATL_DIR
 if [ -f "$TEZCATL_DIR/local.env" ]; then . "$TEZCATL_DIR/local.env"; fi
 # the language-server commands lsp.json names that upstream makes with Nix (lsp/README.md)
 export PATH="$TEZCATL_DIR/lsp/bin:$PATH"
+# as the Nix dev shell: file names are UTF-8 whatever the locale
+export ELIXIR_ERL_OPTIONS="${ELIXIR_ERL_OPTIONS:-+fnu}"
 
 STOP_GRACE=10   # seconds the VM gets to stop on TERM before KILL
 LOG="${TEZCATL_LOG:-/tmp/tezcatl-relay.log}"

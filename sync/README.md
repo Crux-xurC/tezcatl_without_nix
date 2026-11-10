@@ -16,6 +16,7 @@ This repository's own files:
 | `bin/t`, `bin/release` | starting tezcatl, building the release |
 | `bin/test` | the relay's tests |
 | `lsp/` | the language-server commands upstream makes with Nix (`nix/dev-tools.nix`) |
+| `test/e2e/stack.sh`, `test/e2e/poca_tezcatl.sh` | the end-to-end stack without Nix (they replace upstream's: `sync/replaced.txt`) |
 | `sync/` | this, the script, `gitignore.extra`, `replaced.txt` (upstream files replaced by work of this repository; upstream's versions in `sync/upstream/`), `UPSTREAM` |
 
 To update: `sync/sync.sh ~/path/to/tezcatl`, review `git diff`, `bin/test`, commit with the upstream commit in the message.

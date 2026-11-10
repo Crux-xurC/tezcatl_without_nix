@@ -10,5 +10,7 @@ scripts. `bin/t` puts `lsp/bin` first on `PATH`, so the relay finds them.
 | `tezcatl-shell-lsp` | shell: shellcheck | `efm-langserver`, `shellcheck` |
 
 The other servers in `lsp.json` (`typescript-language-server`, `vscode-langservers-extracted`, `nil`, `ocamllsp` …) are found on
-`PATH` as they are; install the ones for the languages you edit. Why each is set up this way: the comments in tezcatl's
+`PATH` as they are; install the ones for the languages you edit. `typescript-language-server` needs TypeScript 5 beside it
+(`npm install -g typescript@5 typescript-language-server`, or `typescript` in the project): it brings none of its own, and
+TypeScript 7 (the native one) has no `tsserver` it can use. Nix's package comes with it. Why each is set up this way: the comments in tezcatl's
 `nix/dev-tools.nix`.
