@@ -23,7 +23,7 @@ Where tezcatl's documents say `nix develop`, `t` or `nix/…` (marked `<!-- env:
 ## Requirements
 
 - Linux (x86_64; others untried)
-- Elixir 1.18 or later with Erlang/OTP 27 or later (checked with Elixir 1.20.0 / OTP 29)
+- Elixir 1.18 or later with Erlang/OTP 27 or later (checked with Elixir 1.20.0 / OTP 29; the relay's tests also with 1.18.4 / OTP 27)
 - gcc, g++, make and libcap, to build erlexec (the PTYs)
 - ripgrep (`rg`) for `:grep`
 - Optional: the language servers in `lsp.json` you want (see [lsp/README.md](lsp/README.md)) -- for JavaScript,
