@@ -27,7 +27,7 @@ defmodule TezcatlRelay.MixProject do
   def application do
     # Under `mix test` the relay itself is not started (upstream's tests start
     # what they need, as they did as standalone scripts)
-    [extra_applications: [:logger, :crypto]] ++
+    [extra_applications: [:logger, :crypto, :inets]] ++
       if Mix.env() == :test, do: [], else: [mod: {TezcatlRelay.Application, []}]
   end
 
