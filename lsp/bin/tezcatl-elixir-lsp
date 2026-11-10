@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Elixir for the editor: elixir-ls where there is a mix.exs, else efm-langserver
+# checks the syntax only (from tezcatl's nix/dev-tools.nix; see the comment there)
+if [ -f mix.exs ]; then exec elixir-ls; fi
+TEZCATL_LSP_DIR="$(dirname "$(readlink -f "$0")")/.."
+export TEZCATL_LSP_DIR
+exec efm-langserver -c "$TEZCATL_LSP_DIR/efm-elixir.yaml"

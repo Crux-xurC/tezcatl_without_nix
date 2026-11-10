@@ -15,6 +15,7 @@ This repository's own files:
 | `app/pages.ex` | the pages, served by the relay's VM (upstream uses python3's http.server) |
 | `bin/t`, `bin/release` | starting tezcatl, building the release |
 | `bin/test` | the relay's tests |
+| `lsp/` | the language-server commands upstream makes with Nix (`nix/dev-tools.nix`) |
 | `sync/` | this, the script, `gitignore.extra`, `UPSTREAM`, `main.exs.upstream` |
 
 To update: `sync/sync.sh ~/path/to/tezcatl`, review `git diff`, `bin/test`, commit with the upstream commit in the message.

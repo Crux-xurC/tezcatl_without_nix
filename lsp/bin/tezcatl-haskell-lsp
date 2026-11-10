@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Haskell for the editor: efm-langserver runs `ghc -fno-code` on every save
+# (from tezcatl's nix/dev-tools.nix; see the comment there)
+exec efm-langserver -c "$(dirname "$(readlink -f "$0")")/../efm-haskell.yaml"

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# shell for the editor: efm-langserver runs shellcheck
+# (from tezcatl's nix/dev-tools.nix; see the comment there)
+exec efm-langserver -c "$(dirname "$(readlink -f "$0")")/../efm-shell.yaml"

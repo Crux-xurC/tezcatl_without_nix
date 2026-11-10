@@ -1,0 +1,13 @@
+version: 2
+lint-debounce: 300ms
+languages:
+  shell:
+    - lint-command: 'shellcheck -f gcc -x -e SC2148 -'
+      lint-stdin: true
+      lint-ignore-exit-code: true
+      lint-after-open: true
+      lint-source: shellcheck
+      lint-formats:
+        - '-:%l:%c: %trror: %m'
+        - '-:%l:%c: %tarning: %m'
+        - '-:%l:%c: %tote: %m'

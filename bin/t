@@ -25,6 +25,8 @@ TEZCATL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export TEZCATL_DIR
 # this machine's own settings (git-ignored), e.g. TEZCATL_FS_ROOT
 if [ -f "$TEZCATL_DIR/local.env" ]; then . "$TEZCATL_DIR/local.env"; fi
+# the language-server commands lsp.json names that upstream makes with Nix (lsp/README.md)
+export PATH="$TEZCATL_DIR/lsp/bin:$PATH"
 
 STOP_GRACE=10   # seconds the VM gets to stop on TERM before KILL
 LOG="${TEZCATL_LOG:-/tmp/tezcatl-relay.log}"

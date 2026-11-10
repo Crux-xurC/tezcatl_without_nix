@@ -1,0 +1,11 @@
+version: 2
+lint-debounce: 300ms
+languages:
+  elixir:
+    - lint-command: 'elixir "$TEZCATL_LSP_DIR/tezcatl-elixir-syntax.exs" ${INPUT}'
+      lint-stdin: true
+      lint-ignore-exit-code: true
+      lint-after-open: true
+      lint-source: elixir
+      lint-formats:
+        - '%f:%l:%c: %trror: %m'

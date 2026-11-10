@@ -1,78 +1,64 @@
-# Tezcatl
+# Tezcatl without Nix
 
-A local, web-based development environment that uses Emacs as a **backend** instead of
-re-implementing it. Tezcatl (Nahuatl for "mirror") is the window: it decides how things are
-operated and shown in the browser, and sends input to the backends **without interpreting it**.
-The backends — Emacs through emacs-vent (a separate repository), a terminal, the disk, language servers,
-Xipe Totec (a separate project) — compute.
+[tezcatl (Nix management: https://github.com/Crux-xurC/tezcatl)](https://github.com/Crux-xurC/tezcatl), made to run without Nix.
 
-```
-Browser (Tezcatl: CodeMirror / xterm.js)
-        │ WebSocket
- ───────┼──────────────────────── the same host
- Elixir relay   ① vent  ② PTY  ③ files  ④ LSP  ⑤ Xipe Totec
-        │
- emacs-vent (in / out)  →  Emacs (Magit / Org / dired …)
-```
+Tezcatl is a local, web-based development environment that uses Emacs as a backend instead of re-implementing it: the browser is the
+window, and input goes to the backends (Emacs through emacs-vent, a terminal, the disk, language servers, Xipe Totec) uninterpreted.
+What it is and how to use it: [README.tezcatl.md](README.tezcatl.md) (tezcatl's own README) and [docs/](docs/how-to-use.md).
 
-The browser never talks to Emacs, a PTY, the disk or a language server directly; one Elixir
-relay owns each connection and multiplexes the windows.
+This repository is generated from tezcatl (Nix management) by [`sync/sync.sh`](sync/README.md): the same pages and the same relay,
+with the relay made a Mix project (`mix.exs`) and the Nix parts replaced. Changes are made in tezcatl (Nix management) and synced here;
+the tezcatl commit this tree comes from is in [`sync/UPSTREAM`](sync/UPSTREAM).
 
-## What it is not
+| tezcatl (Nix management) | here |
+|---|---|
+| `nix develop`, then `t` | `bin/t` |
+| `elixir main.exs`, BEAM packages from Nix | `mix run`, or a release (`bin/release`), packages from Hex (`mix.lock`) |
+| the pages from `python3 -m http.server` | the pages from the relay's own VM ([`app/pages.ex`](app/pages.ex)) |
+| `./test/run-relay.sh` | `bin/test` |
+| `tezcatl-*-lsp` made by Nix | [`lsp/bin/`](lsp/README.md) |
 
-- not a re-implementation of Emacs, an IDE, Git, LSP, an LLM or vterm
-- not a mirror of Emacs' buffers (it carries computed results, not what Emacs displays)
-- not a competitor of VS Code, not a plugin marketplace
-- not for the network: everything listens on `127.0.0.1` only, and started from Poca the relay serves only Poca's window (see
-  [docs/scope.md](docs/scope.md))
+Where tezcatl's documents say `nix develop`, `t` or `nix/…` (marked `<!-- env:nix -->`), read them with this table.
+
+## Requirements
+
+- Linux (x86_64; others untried)
+- Elixir 1.18 or later with Erlang/OTP 27 or later (checked with Elixir 1.20.0 / OTP 29)
+- gcc, g++, make and libcap, to build erlexec (the PTYs)
+- ripgrep (`rg`) for `:grep`
+- Optional: the language servers in `lsp.json` you want (see [lsp/README.md](lsp/README.md)); MariaDB for the database windows
+- The backends, started on their own: Emacs with [emacs-vent](https://github.com/Crux-xurC/emacs-vent) (`:4000`),
+  [Xipe Totec](https://github.com/Crux-xurC/xipe_totec) (`:4200`)
+- A Chromium-based browser, or [Poca](https://github.com/Crux-xurC/poca)
 
 ## Run it
 
-Start it from Poca's box (the `tezcatl` row with `"auth": true`): Poca hands it a secret and the relay serves only Poca's window.
-
-<!-- env:nix -->
-```
-nix develop
-t --no-auth   # by hand, without Poca: page server + relay without authentication (Ctrl+C stops both); opens no browser
+```sh
+mix deps.get           # once
+bin/t --no-auth        # the pages (:4001) and the relay (:4100), in the foreground; Ctrl+C stops it
 ```
 
-The backends are started on their own: your Emacs with [emacs-vent](https://github.com/Crux-xurC/emacs-vent) loaded and `emacs-vent-mode` on (for example
-`emacs --fg-daemon`, :4000) and [Xipe Totec](https://github.com/Crux-xurC/xipe_totec)
-(`xipe start --port 4200 --lsp ws://127.0.0.1:4100/lsp --fs-root <root>`, :4200).
+Then open `http://127.0.0.1:4001/main.html` and pick `frame`. Started from Poca's box, leave out `--no-auth`: Poca hands it a secret
+and the relay serves only Poca's window.
 
-Then open `http://127.0.0.1:4001/main.html` (the launcher) and pick `frame`.
-A version without Nix (`mix.exs`) is planned; until then the steps above assume the dev shell.
-<!-- /env:nix -->
+`bin/t` runs `mix run` (the first start compiles). To run it without Elixir on `PATH` afterwards, build a release once with
+`bin/release` (Erlang's runtime included, under `_build/prod/rel/`); `bin/t` runs that when it is there.
 
-## Which document to read
+The ports: `TEZCATL_RELAY_PORT` (4100), `TEZCATL_PAGES_PORT` (4001, `off` for none), `TEZCATL_VENT_PORT` (emacs-vent, 4000). Settings of
+your machine (e.g. `TEZCATL_FS_ROOT`, the root the files and terminals are opened under) can go in `local.env`, read by `bin/t`.
 
-| You want to | Read |
-|---|---|
-| use it day to day | [docs/how-to-use.md](docs/how-to-use.md) |
-| add a command, an intent, a panel, a language … | [docs/extending.md](docs/extending.md) — a table: what to write, where, which test guards it |
-| know what is promised to work, and what happens outside | [docs/scope.md](docs/scope.md) — each promise with a one-line why and the file records that hold the details |
-| change or analyse the core | [docs/scope.md](docs/scope.md), then [docs/files/](docs/files/index.md) (one record per file: what it does, why, the decisions it is home to) |
-| see the overall shape | [docs/structure.md](docs/structure.md) (principles, who does what, the decision index) |
-| know the wire format | [docs/protocol.md](docs/protocol.md) |
-| review or verify it | [docs/review.md](docs/review.md) |
-| see what is left to do | [docs/issues.md](docs/issues.md) |
+## Tests
 
-## Glossary
+```sh
+bin/test                    # the relay's tests (mix test)
+node --test test/*.test.js  # the browser side's
+```
 
-| Term | In a word |
-|---|---|
-| **vent protocol** | the editor-neutral agreement between Tezcatl and an editor |
-| **emacs-vent** | its Emacs implementation (vent-out: Emacs → outside, vent-in: outside → Emacs) |
-| **relay** | the Elixir process that owns emacs-vent's single client slot, the PTYs, the files, the language servers |
-| **panel** | one page (an editor, a terminal, a list …), alone in a window or inside a skin |
-| **skin** | a page that holds panels; **frame** is the one to use (columns of panels and a dock) |
-| **dock** | the part of the frame outside the columns: the map, the input line, the receiving side, … |
-| **lead key** | `;` and one character: how the input line writes keys a browser would take (`;cx` is `C-x`) |
-| **intent** | a named operation run in a backend (an Emacs form, a browser action), declared in JSON |
-| **book** | a table kept in the work place (`~work/books/`): task_table and run_table edit books |
-| **work place** | `~work/…` — Tezcatl's own files, outside the project (`~/.local/state/tezcatl/work/`) |
+## Status
+
+A development version, not checked as widely as tezcatl (Nix management): the relay's tests pass and it starts and serves the pages;
+the end-to-end tests (`test/e2e/`) still assume Nix.
 
 ## License
 
-- Tezcatl (this repository): MIT ([LICENSE](LICENSE))
-- emacs-vent (separate repository): GPL-3.0-or-later
+MIT, as tezcatl ([LICENSE](LICENSE)). emacs-vent (separate repository): GPL-3.0-or-later.

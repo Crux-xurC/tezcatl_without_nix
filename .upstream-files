@@ -1,6 +1,6 @@
 .gitignore
 LICENSE
-README.md
+README.tezcatl.md
 assets/tezcatlipoca.png
 blocks/README.md
 blocks/code_editor.json
