@@ -11,6 +11,9 @@ This repository's own files:
 | `mix.exs`, `mix.lock` | the Mix project (versions follow tezcatl's `nix/relay-packages.nix`) |
 | `app/application.ex` | tezcatl's `main.exs` as an OTP application (kept in step by hand; the sync shows `main.exs`'s changes) |
 | `test/relay/test_helper.exs`, `test/relay_isolated/test_helper.exs` | start ExUnit |
+| `README.md` | the entrance (upstream's README is `README.tezcatl.md`) |
+| `app/pages.ex` | the pages, served by the relay's VM (upstream uses python3's http.server) |
+| `bin/t`, `bin/release` | starting tezcatl, building the release |
 | `bin/test` | the relay's tests |
 | `sync/` | this, the script, `gitignore.extra`, `UPSTREAM`, `main.exs.upstream` |
 

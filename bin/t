@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+# bin/t -- bring tezcatl up without Nix: the relay (:4100) and the pages
+# (:4001), both served by one Elixir VM, in the foreground. This repository's
+# own; upstream's nix/t does the same with Nix and python3.
+#
+#   bin/t [--no-auth]
+#
+# Runs the release when one is built (bin/release), else `mix run --no-halt`
+# (the first run fetches and compiles the dependencies: `mix deps.get` once).
+# It opens no browser; the page is at http://127.0.0.1:4001/main.html for
+# whatever opens it (Poca). The backends are started on their own: emacs-vent
+# (:4000), Xipe Totec (:4200); the relay reconnects to them once they are up.
+#
+# The relay checks Poca's secret (D-poca-secret): Poca starts this with
+# POCA_SECRET. Without one, nothing starts unless --no-auth says to run
+# without authentication.
+#
+# Ctrl+C, TERM or HUP (closing the terminal) stops it. It refuses to start
+# when a port is in use. Log: /tmp/tezcatl-relay.log (pages and relay).
+# The ports: TEZCATL_RELAY_PORT, TEZCATL_PAGES_PORT (see app/pages.ex).
+
+set -u
+
+TEZCATL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export TEZCATL_DIR
+# this machine's own settings (git-ignored), e.g. TEZCATL_FS_ROOT
+if [ -f "$TEZCATL_DIR/local.env" ]; then . "$TEZCATL_DIR/local.env"; fi
+
+STOP_GRACE=10   # seconds the VM gets to stop on TERM before KILL
+LOG="${TEZCATL_LOG:-/tmp/tezcatl-relay.log}"
+RELEASE="$TEZCATL_DIR/_build/prod/rel/tezcatl_relay/bin/tezcatl_relay"
+relay_port="${TEZCATL_RELAY_PORT:-4100}"
+pages_port="${TEZCATL_PAGES_PORT:-4001}"
+
+up() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
+
+case "$*" in
+  "") ;;
+  --no-auth) export TEZCATL_AUTH=off ;;
+  *)
+    echo "usage: bin/t [--no-auth]   (starts the pages :$pages_port and the relay :$relay_port in the foreground; Ctrl+C stops them)" >&2
+    exit 2
+    ;;
+esac
+if [ -z "${POCA_SECRET:-}" ] && [ "${TEZCATL_AUTH:-}" != off ]; then
+  echo "t: no POCA_SECRET -- start tezcatl from Poca's box, or run 'bin/t --no-auth' to go without authentication." >&2
+  echo "t: nothing started." >&2
+  exit 1
+fi
+
+busy=""
+[ "$pages_port" != off ] && up "$pages_port" && busy="$busy :$pages_port(pages)"
+up "$relay_port" && busy="$busy :$relay_port(relay)"
+if [ -n "$busy" ]; then
+  echo "t: in use:$busy -- nothing started."
+  exit 1
+fi
+
+# config.json, lsp.json, xipe.json ... are read from the current directory
+cd "$TEZCATL_DIR" || exit 1
+if [ -x "$RELEASE" ]; then
+  how="release"
+  "$RELEASE" start </dev/null >"$LOG" 2>&1 &
+else
+  if ! command -v mix >/dev/null 2>&1; then
+    echo "t: no release built and no mix on PATH -- install Elixir, or build one with bin/release" >&2
+    exit 1
+  fi
+  how="mix run"
+  mix run --no-halt </dev/null >"$LOG" 2>&1 &
+fi
+pid=$!
+
+stop() {
+  trap - INT TERM HUP
+  echo
+  echo "t: stopping"
+  kill -TERM "$pid" 2>/dev/null
+  local waited=0
+  while kill -0 "$pid" 2>/dev/null && [ "$waited" -lt $((STOP_GRACE * 10)) ]; do
+    sleep 0.1
+    waited=$((waited + 1))
+  done
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "t: did not stop in ${STOP_GRACE}s -- killed"
+    kill -KILL "$pid" 2>/dev/null
+  fi
+  wait "$pid" 2>/dev/null
+  echo "t: stopped"
+  exit 0
+}
+trap stop INT TERM HUP
+
+# wait for the relay's port (mix run may compile first), or for an early end
+while ! up "$relay_port"; do
+  if ! kill -0 "$pid" 2>/dev/null; then
+    wait "$pid"
+    echo "t: ended before listening (status $?) -- see $LOG:" >&2
+    tail -n 5 "$LOG" >&2
+    exit 1
+  fi
+  sleep 0.2
+done
+
+if [ -n "${POCA_SECRET:-}" ]; then auth="authentication on"; else auth="authentication OFF (--no-auth)"; fi
+echo "t: up ($how) -- http://127.0.0.1:$pages_port/main.html, relay :$relay_port  ($auth; log $LOG). Ctrl+C stops it."
+
+wait "$pid"
+status=$?
+echo "t: ended (status $status) -- see $LOG"
+exit "$status"

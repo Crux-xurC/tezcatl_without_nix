@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# bin/release -- build the release (Erlang's runtime included) that bin/t runs.
+# This repository's own. Needs Elixir, gcc/g++, make and libcap (erlexec's port
+# program) once, to build; the release then runs without Elixir on PATH.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+export MIX_ENV=prod
+mix deps.get --only prod
+mix release --overwrite
+echo "bin/release: built _build/prod/rel/tezcatl_relay -- bin/t runs it"

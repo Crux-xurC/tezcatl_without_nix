@@ -15,6 +15,7 @@
 #     (test/relay/test_helper.exs starts ExUnit). A test that defines a module
 #     of the relay's own (a stand-in) is moved to test/relay_isolated/, run by
 #     bin/test one file at a time, since `mix test` loads every file into one VM
+#   - README.md -> README.tezcatl.md (README.md here is this repository's own)
 #   - .gitignore: upstream's, then sync/gitignore.extra
 #   - removes the files the previous sync wrote (.upstream-files) that upstream
 #     no longer has; refuses when an upstream file would overwrite one of this
@@ -77,6 +78,9 @@ for f in "$tmp"/test/relay/*_test.exs; do
   done
 done
 rmdir "$tmp/test/relay_isolated" 2>/dev/null || true
+
+# --- README: upstream's is kept as README.tezcatl.md; README.md is this repository's own
+mv "$tmp/README.md" "$tmp/README.tezcatl.md"
 
 # --- .gitignore ----------------------------------------------------------------
 { cat "$tmp/.gitignore"; echo; cat "$here/sync/gitignore.extra"; } > "$tmp/.gitignore.new"

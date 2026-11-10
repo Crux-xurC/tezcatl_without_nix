@@ -122,6 +122,30 @@ defmodule TezcatlRelay.Application do
         System.halt(1)
     end
 
+    # not in main.exs: the pages, which upstream's nix/t serves with python3
+    case TezcatlRelay.Pages.start() do
+      :ok ->
+        if TezcatlRelay.Pages.port() != "off" do
+          IO.puts(
+            "tezcatl pages: http://127.0.0.1:#{TezcatlRelay.Pages.port()}/main.html  " <>
+              "(#{TezcatlRelay.Pages.pages_dir()})"
+          )
+        end
+
+      {:error, :eaddrinuse} ->
+        IO.puts(
+          :stderr,
+          "tezcatl pages: 127.0.0.1:#{TezcatlRelay.Pages.port()} is in use " <>
+            "(change it with TEZCATL_PAGES_PORT, or \"off\")"
+        )
+
+        System.halt(1)
+
+      {:error, reason} ->
+        IO.puts(:stderr, "tezcatl pages: could not start the listener: #{inspect(reason)}")
+        System.halt(1)
+    end
+
     IO.puts(
       "tezcatl relay: browsers on ws://127.0.0.1:#{browser_port}/  ->  emacs-vent #{emacs_host}:#{emacs_port}" <>
         "  (/pty for PTY; /lsp for language servers; GET /windows, GET /lsp/servers for the ledgers)"
