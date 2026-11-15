@@ -22,7 +22,13 @@ defmodule TezcatlRelay.MixProject do
         # erlexec only loaded: the relay starts it when it first runs a program
         # (ensure_all_started), after app/release_env.ex has cleaned the environment
         # the release gave the VM -- erlexec's port program keeps the one it starts with
-        tezcatl_relay: [include_executables_for: [:unix], applications: [erlexec: :load]]
+        # cookie: fixed, so the same lock gives the same tarball (Mix makes a random one
+        # on each clean build); unused, as rel/env.sh.eex turns distribution off
+        tezcatl_relay: [
+          include_executables_for: [:unix],
+          applications: [erlexec: :load],
+          cookie: "tezcatl-relay-no-distribution"
+        ]
       ]
     ]
   end

@@ -15,6 +15,7 @@ This repository's own files:
 | `app/pages.ex` | the pages, served by the relay's VM (upstream uses python3's http.server) |
 | `app/release_env.ex` | run from a release, the release's own variables are not passed to the programs it starts (terminals, language servers) |
 | `bin/t`, `bin/release` | starting tezcatl, building the release |
+| `rel/env.sh.eex` | the release without Erlang distribution (Mix's default would listen on every interface, behind a cookie the tarball carries) |
 | `bin/test` | the relay's tests |
 | `lsp/` | the language-server commands upstream makes with Nix (`nix/dev-tools.nix`) |
 | `test/e2e/stack.sh`, `test/e2e/poca_tezcatl.sh` | the end-to-end stack without Nix (they replace upstream's: `sync/replaced.txt`) |
