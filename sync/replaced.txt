@@ -5,3 +5,4 @@
 main.exs                  app/application.ex (and app/pages.ex for nix/t's pages)
 test/e2e/stack.sh         test/e2e/stack.sh here (no nix develop; the relay from _build, the pages from its VM)
 test/e2e/poca_tezcatl.sh  test/e2e/poca_tezcatl.sh here (the same)
+.github/workflows/test.yml  .github/workflows/test.yml (CI without Nix: setup-beam, bin/test)

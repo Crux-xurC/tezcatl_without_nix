@@ -24,7 +24,8 @@
 #   - removes the files the previous sync wrote (.upstream-files) that upstream
 #     no longer has; refuses when an upstream file would overwrite one of this
 #     repository's own
-#   - records the upstream commit in sync/UPSTREAM
+#   - records the upstream commit in sync/UPSTREAM, and its tree in
+#     sync/UPSTREAM_TREE (tezcatlipoca's build.sh compares it with upstream's main)
 #
 # It refuses to run on a dirty working tree (commit or stash first), so that
 # `git diff` after it shows exactly what the sync changed.
@@ -132,6 +133,8 @@ done
 rm -rf "$here/sync/upstream"
 mv "$here/.replaced.new" "$here/sync/upstream"
 echo "$commit" > "$here/sync/UPSTREAM"
+# its tree too: what a published history (another commit id, the same tree) is compared by
+git -C "$upstream" rev-parse "$commit^{tree}" > "$here/sync/UPSTREAM_TREE"
 
 echo
 echo "sync: tezcatl $commit"

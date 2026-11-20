@@ -1,0 +1,42 @@
+# The relay's tests (bin/test, mix test) and the browser side's (node) on
+# every push and pull request, without Nix: Elixir and Erlang/OTP from
+# setup-beam, as a person installs them. The `upstream` job says when
+# sync/UPSTREAM_TREE is not tezcatl's main (a notice, not a failure:
+# tezcatlipoca's build.sh refuses it when it makes a release).
+name: test
+on:
+  push:
+  pull_request:
+jobs:
+  relay:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - { elixir: "1.18.4", otp: "27" }
+          - { elixir: "1.19", otp: "28" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
+      - run: mix deps.get
+      - run: bin/test
+  browser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test test/*.test.js
+  upstream:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git clone --quiet --depth 1 --filter=blob:none https://github.com/Crux-xurC/tezcatl.git /tmp/upstream
+          main=$(git -C /tmp/upstream rev-parse 'HEAD^{tree}')
+          if [ "$main" = "$(cat sync/UPSTREAM_TREE)" ]; then echo "in step with tezcatl's main"
+          else echo "::notice::not in step with tezcatl's main (sync/UPSTREAM_TREE $(cat sync/UPSTREAM_TREE), main's tree $main): sync/sync.sh"; fi
