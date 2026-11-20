@@ -21,6 +21,6 @@ await Promise.all(pages.map((p) => p.close()));
 const bad = await openPage(PAGES + 'panels/resident/matrix.html?kind=xipe&root=zzz&ref=x');
 await bad.waitFor(`!document.getElementById('placeholder').hidden`, 10000);
 const ph = await bad.eval(`document.getElementById('placeholder').textContent`);
-check(/^\(xipe: no Xipe Totec project configured for "zzz"/.test(ph) && !/xipe: xipe:/.test(ph), 'an unknown root is reported once, readably: ' + ph);
+check(/^\(xipe: no entry for "zzz" in xipe\.json/.test(ph) && !/xipe: xipe:/.test(ph), 'an unknown root is reported once, readably: ' + ph);
 await bad.close();
 done();

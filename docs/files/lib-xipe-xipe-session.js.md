@@ -19,6 +19,11 @@ Emacs' keymaps. Whether a line answers a dialogue or is a command is Xipe Totec'
   envelope are not shown. Tezcatl never reads `dialogue.text`
 - Request ids carry a random tag per connection; other consumers' answers (errors included) are not picked up
 - Panel names carry a suffix per skin, so two such skins never answer each other's panels
+- **The same window serves another backend** (`?backend=<name>`, 2026-11-16; the relay's `/<name>`,
+  [D-xipe-relay](lib-relay-xipe_socket.exs.md#d-xipe-relay)): `/<name>` instead of `/xipe`, the `<name>` dictionary. Such a server
+  answers in Xipe Totec's shape (`dialogue.text` to show), so nothing else differs; a page of that backend's own talks to its window
+  by `backend.data` (an answer's `result.data`), `backend.line` (a line sent as if typed) and `backend.prefill` (put in the input for a
+  person to send), each with `{backend}`. A second window for another backend would be the same code twice
 
 **Alternatives**: turn the CLI's notation into commands in the browser; make people type JSON-RPC; a dedicated method listing commands
 (`command/list`) for completion.

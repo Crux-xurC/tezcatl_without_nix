@@ -28,7 +28,7 @@ check(!!(await p.waitFor(`/connected: project/.test(${outText})`, 60000)), 'conn
 await sendLine('help');
 await p.waitFor(`/row\\/update: /.test(${outText})`, 15000);
 const help = await after('help');
-check(/\nrow\/add: make a calc row  node=<node id> args=\[\.\.\.\]\n/.test(help), 'help lists row/add as "row/add: make a calc row  node=<node id> args=[...]"');
+check(/\nrow\/add: make a calc row  node=<node id> args=\[\.\.\.\] \[origin=manual\|agent\]\n/.test(help), 'help lists row/add as "row/add: make a calc row  node=<node id> args=[...] [origin=manual|agent]"');
 check(/\nscan: /.test(help) && /\neval: /.test(help), 'help lists the CLI commands the window runs (scan, eval)');
 check(!/choice project:/.test(help) && !/\nstart:/.test(help), 'help leaves out the commands that need a terminal');
 

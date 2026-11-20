@@ -24,8 +24,8 @@ const S = `${F('matrix_bar.html')}.contentDocument.getElementById('status')`;
 const rowsShown = (pg) => pg.waitFor(`document.querySelectorAll('table.mx-grid tbody tr').length > 0`, 60000);
 
 console.log('matrix commands');
-check((await palette.eval(`Tezcatl.commands.list().filter(c => c.name.startsWith('matrix.')).map(c => c.name).join(' ')`)) === 'matrix.update matrix.get matrix.pwd',
-  'command_map.json lists matrix.update / matrix.get / matrix.pwd');
+check((await palette.eval(`Tezcatl.commands.list().filter(c => c.name.startsWith('matrix.')).map(c => c.name).join(' ')`)) === 'matrix.update matrix.get matrix.pwd matrix.approve',
+  'command_map.json lists matrix.update / matrix.get / matrix.pwd / matrix.approve');
 
 // a matrix.html on its own, then a skin: the skin takes the command
 const page = await openPage(PAGES + 'panels/resident/matrix.html?kind=xipe_rows&root=.&ref=all');

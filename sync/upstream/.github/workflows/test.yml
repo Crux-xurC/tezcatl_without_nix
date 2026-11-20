@@ -1,0 +1,23 @@
+# The unit tests on every push and pull request: the browser side's (node,
+# nothing started) and the Elixir relay's (in the devShell). The end-to-end
+# scenarios (test/e2e/) need Emacs, Chromium and a copy of Xipe Totec and
+# are run by hand (docs/issues.md, "The whole tested").
+name: test
+on:
+  push:
+  pull_request:
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test test/*.test.js
+  relay:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: nix develop --command ./test/run-relay.sh

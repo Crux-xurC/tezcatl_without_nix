@@ -24,6 +24,14 @@ to Xipe Totec's own WebSocket (JSON-RPC, localhost) and multiplexes the browser'
   `--port`, its own `/lsp` URL (`--lsp`, so Xipe Totec's scans share Tezcatl's language servers) and the file root (`--fs-root`). The
   browser learns the target from the answer to `initialize`
 - Origins are checked as on the other entries (`AllowedOrigins`)
+- **The same relay serves other JSON-RPC servers over a WebSocket** (2026-11-16): each name in the relay root's `backends.json`
+  (`["<name>", …]`, this machine's own, not in git; `XipeSocket.extra_backends/1`: lowercase words, never one of the relay's own
+  routes) is mounted as `/<name>` with `[backend: "<name>"]`, which reads `<name>.json` (the same shape) instead of `xipe.json`.
+  Nothing on the way reads a frame, so another server needs only its own config file. A backend other than Xipe Totec is `connect`
+  only (started outside, from Poca's box: `XipeConn`'s `spawn` passes Xipe Totec's own arguments); its connections are kept in
+  `XipeRegistry` as `<name>.json:<entry>`, so they never share one with a `xipe.json` entry of the same name, and the browser is told
+  the plain name in `attached`. Its window is the dialogue window with `?backend=<name>`
+  ([D-xipe-dialogue](lib-xipe-xipe-session.js.md#d-xipe-dialogue)): Tezcatl sends a line and never reads its text
 
 **Alternatives**: a "clever" `LspServer`-like multiplexer (rewriting ids, owning the initialisation); the relay deciding the target path;
 only start, or only connect.
@@ -31,6 +39,9 @@ only start, or only connect.
 **Why not**: Xipe Totec sends state changes to all clients as `notify/*`, so the relay has nothing to route. Deciding the target on
 Tezcatl's side makes two decision points for "which project is shown" (Xipe Totec is also used alone). Being independent, it is
 sometimes started by the relay and sometimes by the user first.
+
+**Why another backend is not its own relay**: a second socket module beside `XipeSocket` would be the same stateless broadcast written
+twice (one home per capability).
 
 **What it removed**: id management in the relay; Tezcatl and Xipe Totec disagreeing on the target. **Re-initialising on reconnect**
 came back with `connect` as default (a restarted Xipe Totec got an upstream that was never `initialize`d, so every line answered
@@ -40,4 +51,4 @@ came back with `connect` as default (a restarted Xipe Totec got an upstream that
 remembers who is connected, never what initialisation said. The one-shot `lib/xipe/xipe-client.js` restarts from `initialize` too.
 
 **Files**: `lib/relay/xipe_config.exs`, `lib/relay/xipe_conn.exs`, `lib/relay/xipe_registry.exs`, `lib/relay/xipe_socket.exs`,
-`xipe.json`, `main.exs`, `lib/xipe/xipe-client.js`, `lib/xipe/xipe-session.js`.
+`xipe.json`, `backends.json` (this machine's own), `main.exs`, `lib/xipe/xipe-client.js`, `lib/xipe/xipe-session.js`.

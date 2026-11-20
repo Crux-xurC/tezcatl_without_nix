@@ -44,6 +44,8 @@ await lspUp('11');
 const s0 = await mine();
 check(s0.length === 1 && s0[0].serverId === 'javascript' && s0[0].pid, 'a code_editor with a.js: its language server runs (pid ' + (s0[0] && s0[0].pid) + ')');
 
+// the code_editor's heading shows the server before it has finished initialize and opened the file: wait for its doc
+for (let i = 0; i < 100 && !((await mine())[0] && (await mine())[0].docs >= 1); i++) await new Promise((r) => setTimeout(r, 200));
 const l1 = await line('lsp list');
 check(/lsp list ── 1 running/.test(l1) && /^1 {2}javascript {2}\S*lc {2}\S+ · 1 pane · 1 doc · pid \d+$/m.test(l1), 'lsp list: numbered, one line a server: ' + l1.split('\n').pop());
 

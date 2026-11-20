@@ -127,6 +127,39 @@ defmodule XipeConnTest do
     refute_received {:xipe_reattached, _}
   end
 
+  test "XipeSocket serves other backends by their own config file, connect only, kept apart in the registry" do
+    assert XipeSocket.config_file("xipe") == "xipe.json"
+    assert XipeSocket.config_file("other") == "other.json"
+
+    # a xipe.json entry keeps its plain name (as before); another backend's is prefixed
+    assert XipeSocket.registry_key("xipe", ".") == "."
+    assert XipeSocket.registry_key("other", ".") == "other.json:."
+    refute XipeSocket.registry_key("other", ".") == XipeSocket.registry_key("xipe", ".")
+
+    # the browser is told the entry's name only
+    assert XipeSocket.entry_name("xipe", ".") == "."
+    assert XipeSocket.entry_name("other", "other.json:.") == "."
+
+    assert :ok = XipeSocket.check_mode("xipe", %{mode: :spawn})
+    assert :ok = XipeSocket.check_mode("other", %{mode: :connect})
+    assert {:error, "other.json: only \"connect\" entries" <> _} = XipeSocket.check_mode("other", %{mode: :spawn})
+  end
+
+  test "XipeSocket.extra_backends/1: the names of backends.json, lowercase words, never one of the relay's own routes" do
+    dir = Path.join(System.tmp_dir!(), "xipe_backends_#{System.unique_integer([:positive])}")
+    File.mkdir_p!(dir)
+    file = Path.join(dir, "backends.json")
+
+    assert XipeSocket.extra_backends(file) == [], "no file: none"
+    File.write!(file, ~s(["other", "two_b", "other", "xipe", "lsp", "Upper", "a/b", "", 3]))
+    assert XipeSocket.extra_backends(file) == ["other", "two_b"]
+    File.write!(file, "{not json")
+    assert XipeSocket.extra_backends(file) == [], "broken: none"
+    File.write!(file, ~s({"other": 1}))
+    assert XipeSocket.extra_backends(file) == [], "not a list: none"
+    File.rm_rf!(dir)
+  end
+
   test "XipeSocket.exit_reason/1 words an attach exit instead of the raw term" do
     assert XipeSocket.exit_reason({:timeout, {GenServer, :call, [:x, :attach, 20_000]}}) =~ "within 20s"
     assert XipeSocket.exit_reason({:noproc, {GenServer, :call, []}}) =~ "retry"

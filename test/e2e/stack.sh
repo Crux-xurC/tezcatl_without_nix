@@ -32,6 +32,13 @@
 #      EDITOR_EMACS_DIR.
 #      E2E_SECRET: the relay runs with it as Poca's secret (D-poca-secret;
 #      secret_gate.mjs); unset, without authentication (TEZCATL_AUTH=off).
+#
+# This machine's own additions (another backend the relay serves, D-xipe-relay):
+# test/e2e/stack.local.sh, not in git, is sourced when it is there. It may
+# set LOCAL_PORTS (checked free by `up`) and define local_config (the relay's
+# root $E2E_DIR/relay is made: write backends.json and <name>.json there),
+# local_start (after the fake xipe; `start <name> <command...>` as below) and
+# local_wait (after the ports are up; `wait_port <port> <name>`).
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -52,6 +59,12 @@ EDITOR_EMACS_DIR="${EDITOR_EMACS_DIR:-$(cd "$(git -C "$tz" rev-parse --path-form
 # what nix develop gave: the BEAM packages (here: mix's build) and UTF-8 file names
 export ERL_LIBS="$tz/_build/dev/lib"
 export ELIXIR_ERL_OPTIONS="+fnu"
+
+LOCAL_PORTS=""
+local_config() { :; }
+local_start() { :; }
+local_wait() { :; }
+if [ -f "$here/stack.local.sh" ]; then . "$here/stack.local.sh"; fi
 
 port_open() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
 
@@ -90,7 +103,7 @@ restart_fake() {
 }
 
 up() {
-  for p in "$PAGES_PORT" "$RELAY_PORT" "$XIPE_PORT" "$FAKE_XIPE_PORT" "$CDP_PORT"; do
+  for p in "$PAGES_PORT" "$RELAY_PORT" "$XIPE_PORT" "$FAKE_XIPE_PORT" "$CDP_PORT" $LOCAL_PORTS; do
     if port_open "$p"; then echo "stack.sh: :$p is already in use (stack already up? run: $0 down)" >&2; exit 1; fi
   done
   ( cd "$tz" && MIX_ENV=dev mix compile ) >/dev/null || { echo "stack.sh: mix compile failed (mix deps.get first?)" >&2; exit 1; }
@@ -115,6 +128,7 @@ up() {
 { ".":    { "mode": "spawn", "installDir": "$E2E_DIR/xt", "command": ["$XIPE_TOTEC_DIR/bin/xipe", "serve"], "port": $XIPE_PORT },
   "fake": { "mode": "connect", "host": "127.0.0.1", "port": $FAKE_XIPE_PORT } }
 EOF
+  local_config
 
   # xipe_totec: a copy, on a copy of its fixture (+ a 4x4 matrix), with evaluated rows
   # the copy holds xipe_totec's own files (the plugins in lib/, info.json,
@@ -151,6 +165,7 @@ EOF
     TEZCATL_AUTH=off POCA_SECRET='${E2E_SECRET:-}' \
     elixir --no-halt -e '{:ok, _} = Application.ensure_all_started(:tezcatl_relay)'"
   start_fake
+  local_start
   start chromium "$CHROMIUM" --headless=new --disable-gpu --no-first-run --no-default-browser-check \
     --remote-debugging-port="$CDP_PORT" --window-size=1200,800 --user-data-dir="$E2E_DIR/chrome" about:blank
 
@@ -158,7 +173,8 @@ EOF
   wait_port "$CDP_PORT" chromium
   wait_port "$RELAY_PORT" relay
   wait_port "$FAKE_XIPE_PORT" "fake xipe"
-  echo "stack.sh: up  (pages :$PAGES_PORT  relay :$RELAY_PORT  fake xipe :$FAKE_XIPE_PORT  cdp :$CDP_PORT  dir $E2E_DIR)"
+  local_wait
+  echo "stack.sh: up  (pages :$PAGES_PORT  relay :$RELAY_PORT  fake xipe :$FAKE_XIPE_PORT  cdp :$CDP_PORT${LOCAL_PORTS:+  local :$LOCAL_PORTS}  dir $E2E_DIR)"
 }
 
 # the Emacs of ../editor/emacs (its init.el: emacs-vent, magit) on :VENT_PORT.

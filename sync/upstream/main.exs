@@ -114,7 +114,10 @@ dispatch =
        {"/sql", SqlSocket, []},
        {"/sql/windows", SqlWindowsHandler, []},
        {"/ticket", TicketHandler, []},
-     ]}
+     ] ++
+       # other JSON-RPC servers relayed as /xipe is: one route a name of this
+       # machine's backends.json (D-xipe-relay)
+       for(b <- XipeSocket.extra_backends("backends.json"), do: {"/" <> b, XipeSocket, [backend: b]})}
   ])
 
 case :cowboy.start_clear(

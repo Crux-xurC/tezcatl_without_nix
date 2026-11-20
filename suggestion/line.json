@@ -110,6 +110,7 @@
     { "line": "tree edit [path]", "desc": "edit the roots file", "in": "tree" },
     { "line": "matrix update", "desc": "fetch the table again", "in": "matrix" },
     { "line": "matrix get <path>", "desc": "fetch the table at kind:ref[@root]", "in": "matrix" },
-    { "line": "matrix pwd", "desc": "the path of the table shown", "in": "matrix" }
+    { "line": "matrix pwd", "desc": "the path of the table shown", "in": "matrix" },
+    { "line": "matrix approve", "desc": "a xipe_classes table: approve the classes of the rows selected", "in": "matrix" }
   ]
 }

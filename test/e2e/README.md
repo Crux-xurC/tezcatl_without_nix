@@ -16,6 +16,7 @@ node test/e2e/xipe_skin.mjs            # dialogue window + dictionary (the fake 
 node test/e2e/xipe_skin.mjs .          # the dialogue window to the copy of the real Xipe Totec (connecting, and the answer to `help`)
 node test/e2e/xipe_input.mjs           # the real copy's `input`: help's lines → dictionary → completion, show, command lines, waiting for eval
 node test/e2e/xipe_rows.mjs            # the table of computed rows (one statement a row, long values cut, shown in full)
+node test/e2e/xipe_approve.mjs         # the classes waiting for approval (xipe_classes): an agent's proposal with its reason, matrix approve on the selected row, the class then the person's; approve refused with nothing selected and on another table (D-xipe-approval)
 node test/e2e/xipe_cards.mjs           # four cards at once (ids never mixed up), the relay's errors shown
 node test/e2e/xipe_place.mjs           # from a table to the definition: g d on the computed rows (a new code_editor opens at that line), the list of functions (xipe_cards — card/list), M-d, Enter. The real copy
 node test/e2e/tree_skin.mjs            # tree skin: slot → tree → code_editor → save (code_editor writes itself; it saves with the tree closed)

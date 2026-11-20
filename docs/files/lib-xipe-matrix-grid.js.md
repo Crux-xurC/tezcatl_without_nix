@@ -4,7 +4,7 @@ The generic, backend-agnostic grid engine behind panels/resident/matrix.html (ma
 
 **Decisions homed here**: [D-matrix-shell](#d-matrix-shell)
 
-**Takes part in**: [D-references](lib-skin-recv-refs.js.md#d-references)
+**Takes part in**: [D-references](lib-skin-recv-refs.js.md#d-references), [D-xipe-approval](lib-xipe-xipe-classes.js.md#d-xipe-approval)
 
 <a id="d-matrix-shell"></a>
 
@@ -22,10 +22,13 @@ them. How Xipe Totec's data is fetched and what it means are in an adapter per `
   by position — sorting and filtering would move colours to other cells
 - **Opened by the query only**: `matrix.html?kind=<adapter>&ref=<opaque reference>&root=<key of xipe.json>` (or
   `?path=<kind>:<ref>[@<root>]`); the shell does not read `ref`
-- **Read only**: the table changes no data. Changing data is a command handed to the dialogue window
+- **Read only**: the table changes no data. Changing data is a command handed to the dialogue window. The one exception:
+  `matrix approve` on a `xipe_classes` table approves the classes of the rows selected
+  ([D-xipe-approval](lib-xipe-xipe-classes.js.md#d-xipe-approval))
 - **No automatic refresh**: a person fetches again. `matrix.html` keeps `{kind, ref, root}`, takes `matrix.reload` / `matrix.load` and
-  posts `matrix.loaded {kind, ref, root, ok, message, rows}` each time. The `matrix` skin (table + command line) has three commands,
-  `matrix update` / `matrix get <path>` / `matrix pwd` (`lib/xipe/matrix-commands.js`), also tezcatl commands
+  posts `matrix.loaded {kind, ref, root, ok, message, rows}` each time. The `matrix` skin (table + command line) has the commands
+  `matrix update` / `matrix get <path>` / `matrix pwd` (`lib/xipe/matrix-commands.js`), also tezcatl commands, and `matrix approve`
+  ([D-xipe-approval](lib-xipe-xipe-classes.js.md#d-xipe-approval))
 - **Rows as sentences** (`kind=xipe_rows`, `lib/xipe/xipe-rows.js`): `row/list` once, one row a sentence (`Calc.add/2 (1, 2) → 5`).
   The data is asked of Xipe Totec, not read from its `book.jsonl` (outside the FS root; folding an append-only log and converting
   formats would be done twice). Cells are one line with a width limit; the cursor's cell shows in full below (`cursorValue()`) — a

@@ -131,5 +131,7 @@ test('attached again on an open socket (upstream restarted): re-initialize, hold
 
 test('relayXipeUrl:connections[0].url with /xipe as the path', () => {
   assert.equal(xipeSession.relayXipeUrl({ connections: [{ url: 'ws://127.0.0.1:4100/?a=1' }] }), 'ws://127.0.0.1:4100/xipe');
+  // another backend through the same relay (D-xipe-relay)
+  assert.equal(xipeSession.relayXipeUrl({ connections: [{ url: 'ws://127.0.0.1:4100/' }] }, '/other'), 'ws://127.0.0.1:4100/other');
   assert.throws(() => xipeSession.relayXipeUrl({}), /connections\[0\]\.url/);
 });

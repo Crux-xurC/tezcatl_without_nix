@@ -65,6 +65,8 @@ check(/^! matrix get nope:x ── nope:x  no adapter for kind="nope"$/.test(awa
 check(/^! matrix get xipe_rows:all@nowhere ── /.test(await cmd('matrix get xipe_rows:all@nowhere')), 'an unknown root says so: ' + await status());
 check(/^! matrix set ── no such command: set/.test(await cmd('matrix set')), 'an unknown command says so');
 check(/^! matrix get ── get: one path/.test(await cmd('matrix get')), 'get without a path says how to write it');
+check(/^! matrix approve ── .*approve: only on a xipe_classes table/.test(await cmd('matrix approve')), 'approve on a table of calc rows is refused (D-xipe-approval): ' + await status());
+check(/^matrix get xipe_classes:all ── xipe_classes:all  \d+ rows$/.test(await cmd('matrix get xipe_classes:all')), 'the classes waiting for approval are a table too: ' + await status());
 check(/xipe_rows:all  \d+ rows$/.test(await cmd('matrix get xipe_rows:all')), 'and back to the calc rows');
 
 // clean up the row this scenario added

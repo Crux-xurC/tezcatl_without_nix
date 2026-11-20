@@ -29,6 +29,8 @@ test('notify: one line, long params cut', () => {
 
 test('info and append (bounded)', () => {
   assert.deepEqual(tr.info({ kind: 'initialized', project: { id: '001', root: '/p' } }), ['# connected: project 001  /p']);
+  // another backend: no project, the work place its books are under
+  assert.deepEqual(tr.info({ kind: 'initialized', workDir: '/w' }), ['# connected: books under /w']);
   assert.deepEqual(tr.info({ kind: 'error', reason: 'no Xipe Totec project configured' }), ['# error: no Xipe Totec project configured']);
   assert.deepEqual(tr.append(['a', 'b'], ['c', 'd'], 3), ['b', 'c', 'd']);
 });

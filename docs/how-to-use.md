@@ -668,7 +668,9 @@ cd <xipe_totec> && nix develop      # the xipe command, usable from any director
 ```
 <!-- /env:nix -->
 
-Languages: Elixir, OCaml, Haskell. Nothing is written into the target project (the data is in `xipe_totec/tables/`).
+Languages evaluated: Elixir, OCaml, Haskell, Python, F#, C#, Scala 3, Java; read as maps only (cards and links, no rows): JavaScript,
+TypeScript, Go, PHP. Xipe Totec writes nothing of its own into the target project (the data is in `xipe_totec/tables/`); a build the
+project's own tool runs writes what that tool writes (`target/`, `obj/` …), as an IDE's build does.
 
 ### The basic flow
 
@@ -789,9 +791,16 @@ xipe do node/resolve module=Calc name=square arity=1 \
 
 - **Elixir**: with `mix.exs`, `iex -S mix`; without, only the `defmodule` parts are read. `defp` cannot be a row.
   The REPL is waited for 15 s (lengthen `eval.boot_timeout` in `dialogue update`; for Mix, `mix compile` first)
-- **OCaml, Haskell**: need [embody](https://github.com/Crux-xurC/embody) next to Xipe Totec. Arguments are written in that
-  language's source. OCaml's `unit` is `args=[()]`. dune, cabal and stack projects must have their dependencies ready. A Haskell
+- **OCaml, Haskell, Python, F#, Scala**: need [embody](https://github.com/Crux-xurC/embody) next to Xipe Totec. Arguments are written
+  in that language's source. OCaml's `unit` is `args=[()]`. Projects must have their dependencies ready (nothing is fetched). A Haskell
   function returning `IO` is not run
+- **C#, Java**: evaluated in another language's REPL (C# in F# Interactive, Java in Scala's REPL) through embody's seam (`embody.cs`,
+  `embody.java`); **the arguments are written in that REPL's language** (F#, Scala). Only `public static` methods are rows. Java
+  needs a maven project (built offline)
+- **JavaScript, TypeScript, Go, PHP**: maps only — `row/add` refuses their functions. Go and PHP are read by their own parsers (`go`,
+  `php` in the target's environment)
+- Each language's details, and what is left to users (evaluating Go and PHP, Rust alone …): Xipe Totec's `document/how-to-use.md` §9 and
+  `document/evolving.md` §8
 - A target with `flake.nix` runs its REPL in that environment (`shellHook` does not run)
 
 ---
@@ -824,6 +833,15 @@ The table above, a command line below (`Ctrl-Enter`). The table does not change 
 | `matrix update` | fetch the table again (after evaluating in the dialogue window) |
 | `matrix get <path>` | fetch that table: `xipe_rows:all` (every row), `xipe_rows:call_ids=<id>,<id>`, `xipe:module=Calc&name=add&arity=2` (one function) |
 | `matrix pwd` | the current table's path |
+| `matrix approve` | on `xipe_classes:all`: approve the classes of the rows selected (the cursor's row, or a selection) |
+
+**Approving an AI agent's classes.** Xipe Totec evaluates a function only after a person classified it (`pure`, `reads`, `writes`). An
+agent using Xipe Totec over MCP (`xipe mcp`) can only propose a class, with a one-line reason; a function a person had classified and
+whose body has changed since is taken back the same way. Both wait in `matrix get xipe_classes:all` (`xipe_classes:source=agent` or
+`source=changed` for one of them): the function, the class, why it waits, the agent's reason. `g d` on a row shows the function's source
+in a `code_editor`; select the rows you agree with (`V`, or the cursor's row alone) and `matrix approve`. Xipe Totec approves all of them
+or none (it says why), and the table is fetched again. The reason is the agent's text: read it, and the source, before approving
+([D-xipe-approval](files/lib-xipe-xipe-classes.js.md#d-xipe-approval)).
 
 ### Database window (`database`)
 

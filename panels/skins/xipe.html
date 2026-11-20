@@ -54,20 +54,34 @@
 //   dict pane (list.html?config=dict&list=<?dict=, default xipe>) --> code_xipe_in
 // ?root= is the xipe.json entry name (default "."). Pane names carry a
 // per-instance suffix so two open skins never answer each other's panes.
+// ?backend=<name> makes it the window of another JSON-RPC server the relay
+// serves the same way (/<name> and <name>.json instead of /xipe and
+// xipe.json, from the relay's backends.json; D-xipe-relay), with the
+// "<name>" dictionary. Such a server answers in Xipe Totec's shape
+// (dialogue.text to show, never read), so nothing else differs, except three
+// bus messages a page of that backend's own may use, each carrying
+// {backend}: backend.data (an answer's structured `data`, never its text),
+// backend.line (a line to send as if typed) and backend.prefill (a line put
+// in the input for a person to send).
 (function () {
   'use strict';
   var bus = Tezcatl.bus;
   var q = new URLSearchParams(location.search);
+  var backend = /^[a-z][a-z0-9_]{0,31}$/.test(q.get('backend') || '') ? q.get('backend') : 'xipe';
   var xipeRoot = q.get('root') || '.';
-  var dictList = q.get('dict') || 'xipe';
+  var dictList = q.get('dict') || backend;
+  if (backend !== 'xipe') {
+    document.title = 'Tezcatl — ' + backend + ' skin';
+    document.querySelector('#bar b').textContent = 'Tezcatl · ' + backend;
+  }
   var statusEl = document.getElementById('status');
   var T = Tezcatl.xipeTranscript;
   var MAX_LINES = 5000;
 
   var sfx = Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5);
-  var IN = 'xipe-in-' + sfx, OUT = 'xipe-out-' + sfx, DICT = 'xipe-dict-' + sfx;
+  var IN = backend + '-in-' + sfx, OUT = backend + '-out-' + sfx, DICT = backend + '-dict-' + sfx;
 
-  Tezcatl.panelFrame.init({ role: 'skin', name: 'xipe' });
+  Tezcatl.panelFrame.init({ role: 'skin', name: backend });
   Tezcatl.commands.load().catch(function () {});
   Tezcatl.commands.listenBus();
 
@@ -89,7 +103,7 @@
         { panel: 'list', src: 'panels/tool/list.html?config=dict&list=' + encodeURIComponent(dictList), name: DICT, size: 1 },
       ],
     },
-    { id: 'xipe' },
+    { id: backend },
   );
 
   Tezcatl.skinDict.wire(bus, { dict: DICT, editors: [IN] });
@@ -103,15 +117,17 @@
     if (outId) bus.post('code.set', { text: lines.join('\n') + '\n' }, { to: outId });
   }
 
+  var inId = null;
   bus.on('code.ready', function (_p, meta) {
     if (meta && meta.from && meta.from.name === OUT) { outId = meta.from.id; show([]); }
+    if (meta && meta.from && meta.from.name === IN) inId = meta.from.id;
   });
 
   // -- connection ----------------------------------------------------------------
   var session = null;
   Tezcatl.config.load().then(function (c) {
     session = Tezcatl.xipeSession.create({
-      url: Tezcatl.xipeSession.relayXipeUrl(c),
+      url: Tezcatl.xipeSession.relayXipeUrl(c, '/' + backend),
       root: xipeRoot,
       on: {
         state: function (s) { statusEl.textContent = s + '  (root ' + xipeRoot + ')'; },
@@ -121,7 +137,13 @@
           (i.ids || []).forEach(function (id) { bus.post('xipe.answered', { req: id, ok: false }); });
         },
         // said on the bus with the id of the line it answers: with xipe.sent, a pair of work.json
-        reply: function (r) { show(T.reply(r)); bus.post('xipe.answered', { req: r.id, ok: !r.error }); },
+        reply: function (r) {
+          show(T.reply(r));
+          bus.post('xipe.answered', { req: r.id, ok: !r.error });
+          // another backend's structured answer, for a page of its own (never the text)
+          var d = backend !== 'xipe' && r.result && r.result.data;
+          if (d) bus.post('backend.data', { backend: backend, data: d });
+        },
         notify: function (n) { show(T.notify(n)); },
       },
     });
@@ -148,6 +170,29 @@
     });
   });
   var sending = Promise.resolve();
+
+  // another backend's lines from a page of its own (to this backend's window
+  // only): backend.line is sent as if typed (shown in the record),
+  // backend.prefill is put in the input for a person to send (Ctrl-Enter) --
+  // never sent by itself
+  if (backend !== 'xipe') {
+    bus.on('backend.line', function (p) {
+      if (!p || p.backend !== backend) return;
+      var text = typeof p.text === 'string' ? p.text : '';
+      if (!text.trim()) return;
+      if (!session) { show(['# not connected yet']); return; }
+      sending = sending.then(function () {
+        show(T.sent(text));
+        bus.post('xipe.sent', { req: session.input(text) });
+      });
+    });
+    bus.on('backend.prefill', function (p) {
+      if (!p || p.backend !== backend) return;
+      var text = typeof p.text === 'string' ? p.text : '';
+      if (!text || !inId) return;
+      bus.post('code.set', { text: text }, { to: inId });
+    });
+  }
 
   window.addEventListener('pagehide', function () { if (session) session.close(); });
 

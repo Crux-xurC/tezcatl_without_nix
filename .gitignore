@@ -19,6 +19,9 @@ erl_crash.dump
 /tree.json
 /fonts/
 /local.env
+# this machine's other backends for the relay (D-xipe-relay) and the E2E stack's additions
+/backends.json
+/test/e2e/stack.local.sh
 /example_mirror/
 # a person's own skins, panels, looks (e.g. an LCARS version) -- never shipped; skin read looks in local/skins/
 /local/

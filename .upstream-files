@@ -102,6 +102,7 @@ docs/files/lib-vent-protocol.js.md
 docs/files/lib-vent-resolver.js.md
 docs/files/lib-vent-vent-init.js.md
 docs/files/lib-xipe-matrix-grid.js.md
+docs/files/lib-xipe-xipe-classes.js.md
 docs/files/lib-xipe-xipe-session.js.md
 docs/files/list_kinds.md
 docs/files/lsp.json.md
@@ -345,6 +346,7 @@ lib/xipe/matrix-grid.js
 lib/xipe/matrix-page.js
 lib/xipe/matrix-render.js
 lib/xipe/matrix-target.js
+lib/xipe/xipe-classes.js
 lib/xipe/xipe-client.js
 lib/xipe/xipe-place.js
 lib/xipe/xipe-rows.js
@@ -524,6 +526,7 @@ test/e2e/tree_skin.mjs
 test/e2e/virtual_keyboard.mjs
 test/e2e/work_list.mjs
 test/e2e/work_place.mjs
+test/e2e/xipe_approve.mjs
 test/e2e/xipe_cards.mjs
 test/e2e/xipe_input.mjs
 test/e2e/xipe_place.mjs
@@ -608,6 +611,7 @@ test/tree-commands.test.js
 test/virtual-keyboard.test.js
 test/work-commands.test.js
 test/work-log.test.js
+test/xipe-classes.test.js
 test/xipe-client.test.js
 test/xipe-place.test.js
 test/xipe-rows.test.js

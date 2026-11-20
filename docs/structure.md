@@ -87,6 +87,7 @@ removed, and the files involved.
 | [D-session-service](files/panels-invisible-daemon.html.md#d-session-service) | windows arranged by the window manager; the invisible hosts in a daemon shipped with the launcher | `panels/invisible/daemon.html` |
 | [D-xipe-relay](files/lib-relay-xipe_socket.exs.md#d-xipe-relay) | `/xipe` is a stateless broadcasting relay that can both start and connect | `lib/relay/xipe_socket.exs` |
 | [D-matrix-shell](files/lib-xipe-matrix-grid.js.md#d-matrix-shell) | `matrix.html` is a generic grid that knows nothing of Xipe Totec; fetching and meaning go to adapters | `lib/xipe/matrix-grid.js` |
+| [D-xipe-approval](files/lib-xipe-xipe-classes.js.md#d-xipe-approval) | the classes waiting for a person (an agent's proposals, bodies changed since) are a table, and `matrix approve` approves the rows selected | `lib/xipe/xipe-classes.js` |
 | [D-xipe-dialogue](files/lib-xipe-xipe-session.js.md#d-xipe-dialogue) | only `input` is sent; what a line means is Xipe Totec's | `lib/xipe/xipe-session.js` |
 | [D-dictionary](files/lib-list-dict.js.md#d-dictionary) | storing, registering and using words are generic parts; a backend's text is never read | `lib/list/dict.js` |
 | [D-tree-skin](files/lib-skin-tree-commands.js.md#d-tree-skin) | the tree shows and selects; slots are edited by a list; commands are translated by the skin | `lib/skin/tree-commands.js` |

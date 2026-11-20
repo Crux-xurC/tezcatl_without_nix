@@ -111,6 +111,7 @@ commands.
 | `matrix.update` | | fetch the table again (a `matrix_set`'s table, else the last `matrix.html`) | `lib/xipe/matrix-bar-page.js`, `lib/xipe/matrix-page.js` (page `panels/resident/matrix.html`, syntax `lib/xipe/matrix-commands.js`, target `lib/xipe/matrix-target.js`) |
 | `matrix.get` | `path` | fetch the table at that path (if none is open, a new `matrix.html` — `fallback`) | same |
 | `matrix.pwd` | | show the table's path | same |
+| `matrix.approve` | | on a `xipe_classes` table (classes an AI agent proposed, or whose function's body changed since), approve the rows selected — Xipe Totec's `effect/approve`, all or none — and fetch the table again (`D-xipe-approval`) | same (adapter `lib/xipe/xipe-classes.js`) |
 | `color.show` | `color` / `json` `name` | turn the colour panel into that colour (`json` is `{"name": "colour"}` from the FS root); if none is open, a new window | `panels/extra/color.html`, `lib/view/color-page.js` |
 
 How to use them: [docs/how-to-use.md](../docs/how-to-use.md) §3 (the frame), §4 (`code_editor`), §9 (`matrix`).
@@ -234,7 +235,7 @@ way (`tree at 2 1`, the map, `@2 1`).
 `tree del n`, `tree order n m`, `tree tag n [text]`, `tree update`, `tree edit [path]` — the same as 2.1's `tree.*`.
 
 **The command line of `matrix_set`** (a synthesis — `syntheses/matrix_set.json`, run by `lib/xipe/matrix-bar-page.js`; it replaced the matrix skin; syntax `lib/xipe/matrix-commands.js`; the leading `matrix` may be left out): `matrix update`,
-`matrix get <path>`, `matrix pwd` — the same as 2.1's `matrix.*`. Also `radar` (this table's selection becomes "the last reference"; the band
+`matrix get <path>`, `matrix pwd`, `matrix approve` — the same as 2.1's `matrix.*`. Also `radar` (this table's selection becomes "the last reference"; the band
 shows `radar ── <table path>  <type>  [<columns>]  @<id>` — `lib/skin/radar.js`).
 
 **The dialogue window** (`panels/skins/xipe.html`): lines go to Xipe Totec as they are, except that a lone `@` is replaced, before sending,

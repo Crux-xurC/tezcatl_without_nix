@@ -6,12 +6,14 @@ const { parse, parsePath, format } = require('../lib/xipe/matrix-commands.js');
 test('parse: each command, with or without the leading matrix', () => {
   assert.deepEqual(parse('matrix update'), { cmd: 'update' });
   assert.deepEqual(parse('pwd'), { cmd: 'pwd' });
+  assert.deepEqual(parse('matrix approve'), { cmd: 'approve' });
   assert.deepEqual(parse('  matrix   get  xipe_rows:all '), { cmd: 'get', path: 'xipe_rows:all', table: { kind: 'xipe_rows', ref: 'all', root: '.' } });
 });
 
 test('parse: what is refused, saying how to write it', () => {
   assert.match(parse('matrix update now').error, /takes no arguments/);
   assert.match(parse('matrix pwd x').error, /takes no arguments/);
+  assert.match(parse('approve all').error, /takes no arguments/);
   assert.match(parse('matrix get').error, /one path/);
   assert.match(parse('matrix get a b').error, /one path/);
   assert.match(parse('matrix get :x').error, /kind/);

@@ -77,6 +77,7 @@
       "fallback": { "open": "panels/resident/matrix.html?path={path}" } },
     { "name": "color.show",    "desc": "color: turn the colour panels the colour given ({color}, or {json, name}: the colour <name> of a JSON from the FS root); with none open, open a new color.html", "args": ["color", "json", "name"],
       "fallback": { "open": "panels/extra/color.html?color={color}&json={json}&key={name}" } },
-    { "name": "matrix.pwd",    "desc": "matrix: show the path of the table shown" }
+    { "name": "matrix.pwd",    "desc": "matrix: show the path of the table shown" },
+    { "name": "matrix.approve", "desc": "matrix: on a xipe_classes table, approve the classes of the rows selected (Xipe Totec's effect/approve, all or none), then fetch it again" }
   ]
 }

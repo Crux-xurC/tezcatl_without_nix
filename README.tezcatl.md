@@ -41,8 +41,11 @@ The backends are started on their own: your Emacs with [emacs-vent](https://gith
 (`xipe start --port 4200 --lsp ws://127.0.0.1:4100/lsp --fs-root <root>`, :4200).
 
 Then open `http://127.0.0.1:4001/main.html` (the launcher) and pick `frame`.
-A version without Nix (`mix.exs`) is planned; until then the steps above assume the dev shell.
+The steps above assume the dev shell.
 <!-- /env:nix -->
+
+Without Nix: [tezcatlipoca](https://github.com/Crux-xurC/tezcatlipoca), a tarball with Tezcatl, Xipe Totec, Poca, emacs-vent and
+embody for Linux x86_64 (or [tezcatl_without_nix](https://github.com/Crux-xurC/tezcatl_without_nix), this repository as a Mix project).
 
 ## Which document to read
 
